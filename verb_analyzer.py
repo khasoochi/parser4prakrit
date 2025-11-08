@@ -1,78 +1,196 @@
 from flask import Flask, render_template, request, jsonify
 import re
-import aksharamukha.transliterate as aksh
 import json
+import logging
+import sys
+from typing import Optional, Dict, List, Set, Tuple, Any
+
+# Configure logging first
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('prakrit_parser.log')
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Try to import aksharamukha, provide fallback if not available
+try:
+    import aksharamukha.transliterate as aksh
+    TRANSLITERATION_AVAILABLE = True
+except ImportError:
+    logger.warning("aksharamukha module not available - transliteration will be limited")
+    TRANSLITERATION_AVAILABLE = False
+    aksh = None
+
+try:
+    from input_validation import InputValidator, validate_and_sanitize
+    INPUT_VALIDATION_AVAILABLE = True
+except ImportError:
+    logger.warning("input_validation module not available - validation will be basic")
+    INPUT_VALIDATION_AVAILABLE = False
+    InputValidator = None
+    validate_and_sanitize = None
 
 app = Flask(__name__)
 
 # Load Prakrit verb roots from verbs.json
 import os
-VERBS_PATH = os.path.join(os.path.dirname(__file__), 'verbs.json')
-with open(VERBS_PATH, encoding='utf-8') as f:
-    VERB_ROOTS = set(json.load(f).values())
+
+VERB_ROOTS = set()
+ALL_VERB_FORMS = {}
+
+try:
+    VERBS_PATH = os.path.join(os.path.dirname(__file__), 'verbs.json')
+    with open(VERBS_PATH, encoding='utf-8') as f:
+        VERB_ROOTS = set(json.load(f).values())
+    logger.info(f"Loaded {len(VERB_ROOTS)} verb roots from {VERBS_PATH}")
+except FileNotFoundError:
+    logger.error(f"Verb roots file not found: {VERBS_PATH}")
+    logger.warning("Running with empty verb roots set")
+except json.JSONDecodeError as e:
+    logger.error(f"Error decoding verb roots JSON: {e}")
+    logger.warning("Running with empty verb roots set")
+except Exception as e:
+    logger.error(f"Unexpected error loading verb roots: {e}")
+    logger.warning("Running with empty verb roots set")
 
 # Load all attested verb forms
-ALL_FORMS_PATH = os.path.join(os.path.dirname(__file__), 'all_verb_forms.json')
-with open(ALL_FORMS_PATH, encoding='utf-8') as f:
-    ALL_VERB_FORMS = json.load(f)
+try:
+    ALL_FORMS_PATH = os.path.join(os.path.dirname(__file__), 'all_verb_forms.json')
+    with open(ALL_FORMS_PATH, encoding='utf-8') as f:
+        ALL_VERB_FORMS = json.load(f)
+    total_forms = sum(len(forms) for forms in ALL_VERB_FORMS.values())
+    logger.info(f"Loaded {len(ALL_VERB_FORMS)} roots with {total_forms} attested forms from {ALL_FORMS_PATH}")
+except FileNotFoundError:
+    logger.error(f"All verb forms file not found: {ALL_FORMS_PATH}")
+    logger.warning("Running with empty attested forms dictionary")
+except json.JSONDecodeError as e:
+    logger.error(f"Error decoding all verb forms JSON: {e}")
+    logger.warning("Running with empty attested forms dictionary")
+except Exception as e:
+    logger.error(f"Unexpected error loading all verb forms: {e}")
+    logger.warning("Running with empty attested forms dictionary")
 
-def detect_script(text):
-    """Detect if the input is in Devanagari or Harvard-Kyoto"""
+def detect_script(text: str) -> str:
+    """
+    Detect if the input is in Devanagari or Harvard-Kyoto script.
+
+    Args:
+        text: Input text to analyze
+
+    Returns:
+        'devanagari' if text contains Devanagari characters, 'hk' otherwise
+    """
     devanagari_pattern = re.compile(r'[\u0900-\u097F]')
     if devanagari_pattern.search(text):
         return 'devanagari'
     return 'hk'
 
-def transliterate(text, from_script, to_script):
-    """Transliterate between Devanagari and Harvard-Kyoto"""
+def transliterate(text: str, from_script: str, to_script: str) -> str:
+    """
+    Transliterate text between Devanagari and Harvard-Kyoto scripts.
+
+    Args:
+        text: Text to transliterate
+        from_script: Source script ('devanagari' or 'hk')
+        to_script: Target script ('devanagari' or 'hk')
+
+    Returns:
+        Transliterated text, or original text if no conversion needed
+
+    Raises:
+        RuntimeError: If transliteration is requested but aksharamukha is not available
+    """
+    if not TRANSLITERATION_AVAILABLE:
+        if from_script != to_script:
+            logger.error("Transliteration requested but aksharamukha not available")
+            raise RuntimeError("Transliteration module not available. Please install aksharamukha.")
+        return text
+
     if from_script == 'devanagari' and to_script == 'hk':
         return aksh.process('Devanagari', 'HK', text)
     elif from_script == 'hk' and to_script == 'devanagari':
         return aksh.process('HK', 'Devanagari', text)
     return text
 
-def is_valid_prakrit_sequence(text):
-    """Validate if the sequence follows Prakrit phonological rules"""
+def is_valid_prakrit_sequence(text: str) -> bool:
+    """
+    Validate if a text sequence follows Prakrit phonological rules.
+
+    Args:
+        text: Text to validate
+
+    Returns:
+        True if sequence is valid according to Prakrit phonology, False otherwise
+
+    Note:
+        In Prakrit, vowel hiatus is allowed, especially in verbal forms:
+        - ai (read as a_i) as in muṇissai
+        - ae (read as a_e) as in jāṇae
+        - oe (read as o_e) as in hoe
+        - ie (read as i_e) as in jāṇie
+    """
     # Basic Prakrit phonological rules - only for consonants
     invalid_patterns = [
         r'[kgcjṭḍtdpb][kgcjṭḍtdpb]',  # No double consonants without gemination
         r'[kgcjṭḍtdpb]h[kgcjṭḍtdpb]',  # Aspirated consonants followed by stops
     ]
-    
-    # In Prakrit, vowel hiatus is allowed, especially in verbal forms:
-    # - ai (read as a_i) as in muṇissai
-    # - ae (read as a_e) as in jāṇae
-    # - oe (read as o_e) as in hoe
-    # - ie (read as i_e) as in jāṇie
-    # Therefore, we don't need to check for vowel hiatus
-    
+
     # Check only consonant-related patterns
     for pattern in invalid_patterns:
         if re.search(pattern, text):
             return False
     return True
 
-def apply_sandhi_rules(stem, ending):
-    """Apply Prakrit sandhi rules between stem and ending"""
-    # In Prakrit, many vowel combinations are preserved as hiatus
-    # Only apply sandhi in specific cases where it's known to occur
-    
+def apply_sandhi_rules(stem: str, ending: str) -> str:
+    """
+    Apply Prakrit sandhi (euphonic combination) rules between stem and ending.
+
+    Args:
+        stem: Verb stem
+        ending: Verb ending
+
+    Returns:
+        Combined form with appropriate sandhi rules applied
+
+    Note:
+        In Prakrit, many vowel combinations are preserved as hiatus.
+        Only specific cases have glide insertion:
+        - i + a → iya (glide 'y' inserted)
+        - u + a → uva (glide 'v' inserted)
+
+        Most other vowel combinations remain as hiatus:
+        - a + i → ai (not e)
+        - a + e → ae (not e)
+        - i + e → ie
+        - o + e → oe
+    """
     # Cases where glides are inserted
     if stem.endswith('i') and ending.startswith('a'):
         return stem + 'y' + ending  # i + a → iya
     if stem.endswith('u') and ending.startswith('a'):
         return stem + 'v' + ending  # u + a → uva
-        
+
     # Most other vowel combinations remain as hiatus in Prakrit
-    # For example:
-    # a + i → ai (not e)
-    # a + e → ae (not e)
-    # i + e → ie
-    # o + e → oe
     return stem + ending
 
-def identify_prefix(verb_form):
-    """Identify possible Prakrit verbal prefixes"""
+def identify_prefix(verb_form: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Identify possible Prakrit verbal prefixes in a verb form.
+
+    Args:
+        verb_form: The verb form to analyze
+
+    Returns:
+        Tuple of (prakrit_prefix, sanskrit_equivalent) if found, (None, None) otherwise
+
+    Example:
+        >>> identify_prefix('paṇivāe')
+        ('pa', 'pra')
+    """
     prefixes = {
         'pa': 'pra',
         'paḍi': 'prati',
@@ -84,14 +202,33 @@ def identify_prefix(verb_form):
         'u': 'ud',
         'aṇu': 'anu'
     }
-    
+
     for prefix, sanskrit in prefixes.items():
         if verb_form.startswith(prefix):
             return prefix, sanskrit
     return None, None
 
-def analyze_endings(verb_form):
-    """Analyze verb endings to determine person, number, and tense with improved accuracy"""
+def analyze_endings(verb_form: str) -> Optional[List[Dict[str, Any]]]:
+    """
+    Analyze verb endings to determine person, number, and tense.
+
+    Args:
+        verb_form: The Prakrit verb form to analyze (in HK transliteration)
+
+    Returns:
+        List of possible analyses sorted by confidence (highest first),
+        or None if no valid analysis found.
+
+        Each analysis is a dictionary containing:
+        - analysis: Dict with tense, person, number, confidence
+        - potential_root: Identified root
+        - ending: Matched ending
+        - prefix: Prakrit prefix if found
+        - sanskrit_prefix: Sanskrit equivalent of prefix
+        - confidence: Float between 0 and 1
+        - notes: List of explanatory notes
+        - sandhi_applied: Boolean indicating if sandhi was applied
+    """
     # Present tense endings with variants
     present_endings = {
         'mi': {'person': 'first', 'number': 'singular', 'tense': 'present', 'confidence': 1.0},
@@ -319,23 +456,49 @@ def index():
 @app.route('/analyze', methods=['POST'])
 def analyze():
     verb_form = request.form.get('verb_form', '')
-    
+
     if not verb_form:
+        logger.warning("Empty verb form received")
         return jsonify({"error": "Please provide a verb form"}), 400
-    
+
+    # Validate and sanitize input
+    if INPUT_VALIDATION_AVAILABLE:
+        is_valid, error_msg, sanitized_form = validate_and_sanitize(verb_form)
+        if not is_valid:
+            logger.warning(f"Invalid input rejected: {error_msg}")
+            return jsonify({
+                "error": f"Invalid input: {error_msg}",
+                "suggestions": [
+                    "Ensure input contains only valid Prakrit characters",
+                    "Check that the input is a valid verb form",
+                    "Input should be between 1 and 200 characters"
+                ]
+            }), 400
+        verb_form = sanitized_form
+        logger.debug(f"Input validated and sanitized: {verb_form}")
+
+    logger.info(f"Analyzing verb form: {verb_form}")
+
     try:
         # Detect script and convert to HK if needed
         detected_script = detect_script(verb_form)
+        logger.debug(f"Detected script: {detected_script}")
+
         working_form = verb_form
         if detected_script == 'devanagari':
             working_form = transliterate(verb_form, 'devanagari', 'hk')
+            logger.debug(f"Transliterated to HK: {working_form}")
+
         # Preprocess HK input: replace 'ai' with 'a_i' for hiatus handling
         if detected_script == 'hk' or (detected_script == 'devanagari' and working_form):
             # Only replace if not already a_i
             working_form = re.sub(r'(?<!_)ai', 'a_i', working_form)
+
         # Analyze the form
         possibilities = analyze_endings(working_form)
+        logger.debug(f"Found {len(possibilities) if possibilities else 0} possible analyses")
         if not possibilities:
+            logger.info(f"No valid analysis found for: {verb_form}")
             return jsonify({
                 "error": "Could not analyze this form. It may not be a valid Prakrit verb form.",
                 "suggestions": [
@@ -372,8 +535,10 @@ def analyze():
             if detected_script == 'devanagari':
                 result["hk_form"] = working_form
             results.append(result)
+        logger.info(f"Successfully analyzed {verb_form}: {len(results)} result(s)")
         return jsonify({"results": results})
     except Exception as e:
+        logger.error(f"Error analyzing {verb_form}: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
@@ -405,9 +570,5 @@ if __name__ == '__main__':
         sys.exit(0)
     else:
         import os
-        port = int(os.environ.get("PORT", 5001))  # Using a different port from the generator
-        app.run(host='0.0.0.0', port=port)
-    if __name__ == '__main__':
-        import os
-        port = int(os.environ.get("PORT", 5000))
+        port = int(os.environ.get("PORT", 5001))
         app.run(host='0.0.0.0', port=port)

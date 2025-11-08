@@ -1,0 +1,212 @@
+{
+  "description": "Test corpus of known Prakrit verb forms with correct analyses",
+  "version": "1.0",
+  "test_cases": [
+    {
+      "verb_form": "karomi",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "present",
+        "person": "first",
+        "number": "singular",
+        "root": "kar",
+        "ending": "omi"
+      },
+      "notes": "Common present tense first person singular form"
+    },
+    {
+      "verb_form": "karosi",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "present",
+        "person": "second",
+        "number": "singular",
+        "root": "kar",
+        "ending": "osi"
+      },
+      "notes": "Present tense second person singular"
+    },
+    {
+      "verb_form": "karoti",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "present",
+        "person": "third",
+        "number": "singular",
+        "root": "kar",
+        "ending": "oti"
+      },
+      "notes": "Present tense third person singular"
+    },
+    {
+      "verb_form": "karoma",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "present",
+        "person": "first",
+        "number": "plural",
+        "root": "kar",
+        "ending": "oma"
+      },
+      "notes": "Present tense first person plural"
+    },
+    {
+      "verb_form": "karihimi",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "future",
+        "person": "first",
+        "number": "singular",
+        "root": "kar",
+        "ending": "ihimi"
+      },
+      "notes": "Future tense first person singular"
+    },
+    {
+      "verb_form": "karihisi",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "future",
+        "person": "second",
+        "number": "singular",
+        "root": "kar",
+        "ending": "ihisi"
+      },
+      "notes": "Future tense second person singular"
+    },
+    {
+      "verb_form": "karihi",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "future",
+        "person": "third",
+        "number": "singular",
+        "root": "kar",
+        "ending": "ihi"
+      },
+      "notes": "Future tense third person singular"
+    },
+    {
+      "verb_form": "jANai",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "present",
+        "person": "third",
+        "number": "singular",
+        "root": "jAN",
+        "ending": "ai"
+      },
+      "notes": "Present tense third person singular with vowel hiatus"
+    },
+    {
+      "verb_form": "hoi",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "present",
+        "person": "third",
+        "number": "singular",
+        "root": "ho",
+        "ending": "i"
+      },
+      "notes": "Present tense of 'to be' verb"
+    },
+    {
+      "verb_form": "bhavai",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "present",
+        "person": "third",
+        "number": "singular",
+        "root": "bhav",
+        "ending": "ai"
+      },
+      "notes": "Present tense third person singular of 'to become'"
+    },
+    {
+      "verb_form": "pakaromi",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "present",
+        "person": "first",
+        "number": "singular",
+        "root": "kar",
+        "ending": "omi",
+        "prefix": "pa",
+        "sanskrit_prefix": "pra"
+      },
+      "notes": "Prefixed verb - pa + karomi"
+    },
+    {
+      "verb_form": "vikaromi",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "present",
+        "person": "first",
+        "number": "singular",
+        "root": "kar",
+        "ending": "omi",
+        "prefix": "vi",
+        "sanskrit_prefix": "vi"
+      },
+      "notes": "Prefixed verb - vi + karomi"
+    },
+    {
+      "verb_form": "karIa",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "past",
+        "person": "all",
+        "number": "all",
+        "root": "kar",
+        "ending": "Ia"
+      },
+      "notes": "Past tense - same form for all persons and numbers"
+    },
+    {
+      "verb_form": "muNissai",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "future",
+        "person": "third",
+        "number": "singular",
+        "root": "muN",
+        "ending": "issai"
+      },
+      "notes": "Future tense with hiatus (ai)"
+    },
+    {
+      "verb_form": "gacchaMti",
+      "script": "hk",
+      "expected_analysis": {
+        "tense": "present",
+        "person": "third",
+        "number": "plural",
+        "root": "gacch",
+        "ending": "Mti"
+      },
+      "notes": "Anusvara (M) before nti - plural form"
+    }
+  ],
+  "edge_cases": [
+    {
+      "verb_form": "",
+      "expected_result": "error",
+      "notes": "Empty input should be rejected"
+    },
+    {
+      "verb_form": "xyz123",
+      "expected_result": "no_analysis",
+      "notes": "Invalid form with no valid ending"
+    },
+    {
+      "verb_form": "a",
+      "expected_result": "no_analysis",
+      "notes": "Single character - too short to analyze"
+    }
+  ],
+  "sources": [
+    "Pischel, Richard. 'Grammatik der Prakrit-Sprachen'. 1900.",
+    "Woolner, Alfred C. 'Introduction to Prakrit'. 1928.",
+    "Tagare, G.V. 'Historical Grammar of Apabhramsha'. 1948."
+  ]
+}
