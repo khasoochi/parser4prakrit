@@ -1,0 +1,46 @@
+# Vercel ignore file - exclude files not needed for deployment
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Testing
+test_*.py
+tests/
+pytest.ini
+.pytest_cache/
+
+# Logs
+*.log
+prakrit_parser.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (keep only if needed)
+PHASE1_IMPROVEMENTS.md
+
+# Environment
+.env
+.env.local
+venv/
+env/
+ENV/
+
+# OS
+.DS_Store
+Thumbs.db
