@@ -3,17 +3,30 @@ import re
 import json
 import logging
 import sys
+import os
 from typing import Optional, Dict, List, Set, Tuple, Any
 
 # Configure logging first
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('prakrit_parser.log')
-    ]
-)
+# Check if running in serverless environment (Vercel/AWS Lambda)
+is_serverless = os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME')
+
+if is_serverless:
+    # Serverless: only log to stdout (no file logging)
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[logging.StreamHandler(sys.stdout)]
+    )
+else:
+    # Local: log to both stdout and file
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler('prakrit_parser.log')
+        ]
+    )
 logger = logging.getLogger(__name__)
 
 # Try to import aksharamukha, provide fallback if not available
@@ -37,8 +50,6 @@ except ImportError:
 app = Flask(__name__)
 
 # Load Prakrit verb roots from verbs.json
-import os
-
 VERB_ROOTS = set()
 ALL_VERB_FORMS = {}
 
