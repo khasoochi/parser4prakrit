@@ -32,40 +32,125 @@ class PrakritUnifiedParser:
     Unified parser for both Prakrit verbs and nouns with intelligent ending-based analysis
     """
 
-    def __init__(self):
+    def __init__(self, auto_download=True):
+        """
+        Initialize parser
+
+        Args:
+            auto_download: If True, automatically download missing databases
+        """
+        # Auto-download databases if missing
+        if auto_download:
+            self.ensure_databases()
+
         self.load_data()
         self.load_feedback_data()
         self.initialize_suffix_database()
+        self.load_dictionary()
+
+    def ensure_databases(self):
+        """Ensure databases are available, download if missing"""
+        try:
+            from download_databases import download_if_missing
+            db_paths = download_if_missing()
+        except Exception as e:
+            # Silently continue if download fails
+            pass
+
+    def load_dictionary(self):
+        """Load dictionary database if available"""
+        self.dictionary = None
+        try:
+            dict_path = os.path.join(os.path.dirname(__file__), 'prakrit-dict.db')
+            if os.path.exists(dict_path):
+                from dictionary_lookup import PrakritDictionary
+                self.dictionary = PrakritDictionary(dict_path)
+                print("✓ Dictionary database loaded")
+        except Exception as e:
+            # Dictionary is optional
+            pass
 
     def load_data(self):
-        """Load verb and noun data from JSON files"""
-        # Load verb data
+        """Load verb and noun data from SQLite databases or JSON files"""
+        # Try SQLite databases first, fall back to JSON
+        self.verb_roots = self.load_verb_roots()
+        self.all_verb_forms = self.load_verb_forms_db()
+        self.all_noun_forms = self.load_noun_forms_db()
+
+    def load_verb_roots(self):
+        """Load verb roots from verbs1.json"""
         try:
             verbs1_path = os.path.join(os.path.dirname(__file__), 'verbs1.json')
             with open(verbs1_path, encoding='utf-8') as f:
                 verbs1_data = json.load(f)
-                self.verb_roots = set(verbs1_data.values())
+                return set(verbs1_data.values())
         except Exception as e:
             print(f"Warning: Could not load verbs1.json: {e}")
-            self.verb_roots = set()
+            return set()
 
-        # Load all verb forms
+    def load_verb_forms_db(self):
+        """Load verb forms from SQLite database or JSON fallback"""
+        # Try SQLite database first
+        try:
+            import sqlite3
+            db_path = os.path.join(os.path.dirname(__file__), 'verb_forms.db')
+            if os.path.exists(db_path):
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+
+                # Load all verb forms
+                cursor.execute('SELECT root, forms FROM verb_forms')
+                verb_forms = {}
+                for root, forms_json in cursor.fetchall():
+                    verb_forms[root] = json.loads(forms_json) if forms_json else {}
+
+                conn.close()
+                if verb_forms:
+                    print(f"✓ Loaded {len(verb_forms)} verb roots from database")
+                    return verb_forms
+        except Exception as e:
+            pass
+
+        # Fallback to JSON
         try:
             all_verb_forms_path = os.path.join(os.path.dirname(__file__), 'all_verb_forms.json')
             with open(all_verb_forms_path, encoding='utf-8') as f:
-                self.all_verb_forms = json.load(f)
+                return json.load(f)
         except Exception as e:
-            print(f"Warning: Could not load all_verb_forms.json: {e}")
-            self.all_verb_forms = {}
+            print(f"Warning: Could not load verb forms: {e}")
+            return {}
 
-        # Load all noun forms
+    def load_noun_forms_db(self):
+        """Load noun forms from SQLite database or JSON fallback"""
+        # Try SQLite database first
+        try:
+            import sqlite3
+            db_path = os.path.join(os.path.dirname(__file__), 'noun_forms.db')
+            if os.path.exists(db_path):
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+
+                # Load all noun forms
+                cursor.execute('SELECT stem, forms FROM noun_forms')
+                noun_forms = {}
+                for stem, forms_json in cursor.fetchall():
+                    noun_forms[stem] = json.loads(forms_json) if forms_json else {}
+
+                conn.close()
+                if noun_forms:
+                    print(f"✓ Loaded {len(noun_forms)} noun stems from database")
+                    return noun_forms
+        except Exception as e:
+            pass
+
+        # Fallback to JSON
         try:
             all_noun_forms_path = os.path.join(os.path.dirname(__file__), 'all_noun_forms.json')
             with open(all_noun_forms_path, encoding='utf-8') as f:
-                self.all_noun_forms = json.load(f)
+                return json.load(f)
         except Exception as e:
-            print(f"Warning: Could not load all_noun_forms.json: {e}")
-            self.all_noun_forms = {}
+            print(f"Warning: Could not load noun forms: {e}")
+            return {}
 
     def load_feedback_data(self):
         """Load user feedback data for learning"""
@@ -303,8 +388,8 @@ class PrakritUnifiedParser:
                 'confidence': 0.85
             },
             'NaM': {
-                'cases': ['instrumental'],  # Primarily instrumental with long vowels
-                'numbers': ['singular', 'plural'],
+                'cases': ['dative', 'genitive'],  # Dative and genitive plural
+                'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
                 'must_precede': ['ā', 'ī', 'ū', 'e'],
                 'blocks': ['M', 'aM'],
@@ -349,8 +434,8 @@ class PrakritUnifiedParser:
                 'confidence': 0.85
             },
             'Na': {
-                'cases': ['instrumental'],  # Primarily instrumental with long vowels
-                'numbers': ['singular', 'plural'],
+                'cases': ['dative', 'genitive'],  # Dative and genitive plural
+                'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
                 'must_precede': ['ā', 'ī', 'ū', 'e'],
                 'blocks': ['a'],
@@ -564,6 +649,36 @@ class PrakritUnifiedParser:
 
         return sorted(matches, key=lambda x: x['priority'], reverse=True)
 
+    def is_valid_prakrit_stem(self, stem: str) -> bool:
+        """
+        Validate if a stem follows Prakrit phonological rules
+
+        Key Prakrit phonological constraints:
+        1. NO consonant-ending words - all Prakrit words must end in vowels
+        2. Valid ending vowels: a, ā, i, ī, u, ū, e, o
+        3. Anusvara (M/ṃ) is allowed as final
+
+        Args:
+            stem: The reconstructed stem to validate
+
+        Returns:
+            True if valid Prakrit stem, False otherwise
+        """
+        if not stem or len(stem) < 1:
+            return False
+
+        # Get last character
+        last_char = stem[-1]
+
+        # Valid Prakrit word endings (all must be vowels or anusvara)
+        valid_endings = {'a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e', 'o', 'M', 'ṃ', '~'}
+
+        # Check if ends with valid character
+        if last_char not in valid_endings:
+            return False
+
+        return True
+
     def reconstruct_noun_stem(self, base: str, suffix: str, gender: str) -> str:
         """Reconstruct noun stem from base and suffix"""
         if not base:
@@ -639,6 +754,10 @@ class PrakritUnifiedParser:
                 stem = self.reconstruct_noun_stem(base, suffix, gender)
 
                 if not stem or len(stem) < 2:
+                    continue
+
+                # Validate Prakrit phonology: no consonant-ending stems
+                if not self.is_valid_prakrit_stem(stem):
                     continue
 
                 # Create analysis for each case possibility
@@ -783,6 +902,10 @@ class PrakritUnifiedParser:
 
             # Create analysis for each root candidate
             for candidate in root_candidates:
+                # Validate Prakrit phonology: no consonant-ending roots
+                if not self.is_valid_prakrit_stem(candidate['root']):
+                    continue
+
                 confidence = info.get('confidence', 0.5) + candidate['confidence_boost']
 
                 if candidate['sandhi_note']:
@@ -836,6 +959,30 @@ class PrakritUnifiedParser:
 
         # Apply learned adjustments from user feedback
         all_analyses = self.apply_learned_adjustments(all_analyses)
+
+        # Add dictionary meanings if dictionary is loaded
+        if self.dictionary:
+            for analysis in all_analyses:
+                lookup_word = None
+
+                if analysis.get('type') == 'noun':
+                    lookup_word = analysis.get('stem')
+                elif analysis.get('type') == 'verb':
+                    lookup_word = analysis.get('root')
+
+                if lookup_word:
+                    try:
+                        entries = self.dictionary.lookup(lookup_word, script='HK')
+                        if entries:
+                            entry = entries[0]
+                            analysis['dictionary'] = {
+                                'headword_devanagari': entry.get('headword_devanagari', ''),
+                                'sanskrit_equivalent': entry.get('sanskrit_equivalent', []),
+                                'meanings': [m.get('definition', '') for m in entry.get('meanings', [])[:3]],
+                                'is_desya': entry.get('is_desya', False)
+                            }
+                    except:
+                        pass  # Dictionary lookup is optional
 
         # Add Devanagari forms if input was HK
         if original_script == 'HK':
