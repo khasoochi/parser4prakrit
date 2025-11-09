@@ -43,5 +43,12 @@ Thumbs.db
 # Data
 data/settings.json
 
+# Environment variables
+.env
+.env.local
+
+# Streamlit
+.streamlit/secrets.toml
+
 # Duplicates
 prakrit_games/
