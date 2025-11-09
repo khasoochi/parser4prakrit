@@ -563,6 +563,121 @@ class PrakritUnifiedParser:
         text = re.sub(r'M(?=[kgcjṭḍtdnpbmyrlvszh])', 'n', text)
         return text
 
+    def generate_anusvara_variants(self, word: str) -> List[str]:
+        """
+        Generate all valid anusvara variants for dictionary lookup
+
+        Prakrit phonology: M (anusvara) before consonants can be:
+        - Before velars (k, g): ṅ
+        - Before palatals (c, j): ñ
+        - Before retroflexes (ṭ, ḍ): ṇ
+        - Before dentals (t, d, n): n
+        - Before labials (p, b, m): m
+        - Can also remain as M/ṃ
+
+        Args:
+            word: Word in HK transliteration
+
+        Returns:
+            List of variants including original
+        """
+        variants = [word]  # Always include original
+
+        # M/ṃ before velars → ṅ
+        variant = re.sub(r'[Mṃ](?=[kg])', 'ṅ', word)
+        if variant != word:
+            variants.append(variant)
+
+        # M/ṃ before palatals → ñ
+        variant = re.sub(r'[Mṃ](?=[cj])', 'ñ', word)
+        if variant != word:
+            variants.append(variant)
+
+        # M/ṃ before retroflexes → ṇ
+        variant = re.sub(r'[Mṃ](?=[ṭḍ])', 'ṇ', word)
+        if variant != word:
+            variants.append(variant)
+
+        # M/ṃ before dentals → n
+        variant = re.sub(r'[Mṃ](?=[tdn])', 'n', word)
+        if variant != word:
+            variants.append(variant)
+
+        # M/ṃ before labials → m
+        variant = re.sub(r'[Mṃ](?=[pbm])', 'm', word)
+        if variant != word:
+            variants.append(variant)
+
+        # Also try M → ṃ and vice versa
+        if 'M' in word:
+            variants.append(word.replace('M', 'ṃ'))
+        if 'ṃ' in word:
+            variants.append(word.replace('ṃ', 'M'))
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_variants = []
+        for v in variants:
+            if v not in seen:
+                seen.add(v)
+                unique_variants.append(v)
+
+        return unique_variants
+
+    def check_attested_verb_form(self, form: str) -> Tuple[bool, Optional[str], Optional[Dict]]:
+        """
+        Check if a verb form is attested in verb_forms.db
+
+        Args:
+            form: Verb form in HK transliteration
+
+        Returns:
+            Tuple of (is_attested, root, form_info)
+        """
+        if not self.all_verb_forms:
+            return False, None, None
+
+        # Try the form and its anusvara variants
+        variants = self.generate_anusvara_variants(form)
+
+        for variant in variants:
+            for root, forms in self.all_verb_forms.items():
+                if isinstance(forms, dict):
+                    if variant in forms:
+                        return True, root, forms[variant]
+                elif isinstance(forms, list):
+                    if variant in forms:
+                        return True, root, {}
+
+        return False, None, None
+
+    def check_attested_noun_form(self, form: str) -> Tuple[bool, Optional[str], Optional[Dict]]:
+        """
+        Check if a noun form is attested in noun_forms.db
+
+        Args:
+            form: Noun form in HK transliteration
+
+        Returns:
+            Tuple of (is_attested, stem, form_info)
+        """
+        if not self.all_noun_forms:
+            return False, None, None
+
+        # Try the form and its anusvara variants
+        variants = self.generate_anusvara_variants(form)
+
+        for variant in variants:
+            for stem, forms in self.all_noun_forms.items():
+                if isinstance(forms, dict):
+                    if variant in forms:
+                        return True, stem, forms[variant]
+                elif isinstance(forms, list):
+                    if variant in forms:
+                        return True, stem, {}
+
+        return False, None, None
+
     def validate_prakrit_characters(self, text: str) -> Tuple[bool, str]:
         """Validate if text contains only valid Prakrit characters"""
         hk_text = self.transliterate_to_hk(text)
@@ -732,14 +847,33 @@ class PrakritUnifiedParser:
         return base
 
     def analyze_as_noun(self, word_hk: str) -> List[Dict]:
-        """Analyze word as a Prakrit noun"""
+        """Analyze word as a Prakrit noun with attested form validation"""
         results = []
 
-        # First check if attested
-        attested = self.check_attested_form(word_hk, 'noun')
-        if attested:
-            results.append(attested)
-            return results
+        # First check if form is attested in noun_forms.db
+        is_attested, attested_stem, form_info = self.check_attested_noun_form(word_hk)
+
+        if is_attested:
+            # High confidence for attested forms
+            analysis = {
+                'form': word_hk,
+                'stem': attested_stem,
+                'type': 'noun',
+                'source': 'attested_form',
+                'confidence': 1.0,
+                'notes': [f"Form attested in noun_forms.db for stem '{attested_stem}'"]
+            }
+
+            # Add grammatical info if available from form_info
+            if form_info and isinstance(form_info, dict):
+                analysis.update({
+                    'case': form_info.get('case', 'unknown'),
+                    'number': form_info.get('number', 'unknown'),
+                    'gender': form_info.get('gender', 'unknown')
+                })
+
+            results.append(analysis)
+            # Don't return immediately - also try ending-based analysis for additional insights
 
         # Find suffix matches
         suffix_matches = self.find_suffix_matches(word_hk, self.noun_suffixes)
@@ -769,6 +903,10 @@ class PrakritUnifiedParser:
                         if stem.endswith(('a', 'i', 'u', 'ā', 'ī', 'ū')):
                             confidence += 0.05
 
+                        # Extra confidence boost if stem matches attested stem
+                        if is_attested and stem == attested_stem:
+                            confidence = min(confidence + 0.25, 0.95)  # High but not 1.0
+
                         analysis = {
                             'form': word_hk,
                             'stem': stem,
@@ -777,10 +915,15 @@ class PrakritUnifiedParser:
                             'number': number,
                             'gender': gender,
                             'type': 'noun',
-                            'source': 'ending_based_guess',
+                            'source': 'ending_based_guess' if not is_attested else 'attested_stem_match',
                             'confidence': min(confidence, 1.0),
                             'notes': [f"Ending-based analysis: suffix '{suffix}' suggests {case} {number}"]
                         }
+
+                        # Add note if stem matches attested
+                        if is_attested and stem == attested_stem:
+                            analysis['notes'].append(f"Stem '{stem}' matches attested form")
+
                         results.append(analysis)
 
         return results
@@ -831,23 +974,33 @@ class PrakritUnifiedParser:
         return candidates
 
     def analyze_as_verb(self, word_hk: str) -> List[Dict]:
-        """Analyze word as a Prakrit verb with vowel sandhi support"""
+        """Analyze word as a Prakrit verb with attested form validation and vowel sandhi support"""
         results = []
 
-        # First check if attested
-        attested = self.check_attested_form(word_hk, 'verb')
-        if attested:
-            # Get grammatical info from the attested root
-            root = attested['root']
-            results.append({
+        # First check if form is attested in verb_forms.db
+        is_attested, attested_root, form_info = self.check_attested_verb_form(word_hk)
+
+        if is_attested:
+            # High confidence for attested forms
+            analysis = {
                 'form': word_hk,
-                'root': root,
+                'root': attested_root,
                 'type': 'verb',
-                'source': 'attested_verb',
+                'source': 'attested_form',
                 'confidence': 1.0,
-                'notes': [f"Form attested for root '{root}'"]
-            })
-            return results
+                'notes': [f"Form attested in verb_forms.db for root '{attested_root}'"]
+            }
+
+            # Add grammatical info if available from form_info
+            if form_info and isinstance(form_info, dict):
+                analysis.update({
+                    'tense': form_info.get('tense', 'unknown'),
+                    'person': form_info.get('person', 'unknown'),
+                    'number': form_info.get('number', 'unknown')
+                })
+
+            results.append(analysis)
+            # Don't return immediately - also try ending-based analysis for additional insights
 
         # Find ending matches
         ending_matches = self.find_suffix_matches(word_hk, self.verb_endings)
@@ -908,6 +1061,10 @@ class PrakritUnifiedParser:
 
                 confidence = info.get('confidence', 0.5) + candidate['confidence_boost']
 
+                # Extra confidence boost if root matches attested root
+                if is_attested and candidate['root'] == attested_root:
+                    confidence = min(confidence + 0.25, 0.95)  # High but not 1.0
+
                 if candidate['sandhi_note']:
                     note = f"Root '{candidate['root']}' found via vowel sandhi ({candidate['sandhi_note']})"
                     source = 'sandhi_analysis'
@@ -917,6 +1074,10 @@ class PrakritUnifiedParser:
                 else:
                     note = "Root not attested - guessed from form"
                     source = 'ending_based_guess'
+
+                # Override source if matches attested
+                if is_attested and candidate['root'] == attested_root:
+                    source = 'attested_root_match'
 
                 analysis = {
                     'form': word_hk,
@@ -930,6 +1091,11 @@ class PrakritUnifiedParser:
                     'confidence': min(max(confidence, 0.1), 1.0),
                     'notes': [f"Ending-based analysis: {note}"]
                 }
+
+                # Add note if root matches attested
+                if is_attested and candidate['root'] == attested_root:
+                    analysis['notes'].append(f"Root '{candidate['root']}' matches attested form")
+
                 results.append(analysis)
 
         return results
@@ -972,7 +1138,20 @@ class PrakritUnifiedParser:
 
                 if lookup_word:
                     try:
-                        entries = self.dictionary.lookup(lookup_word, script='HK')
+                        # Try anusvara variants for better dictionary matching
+                        # Dictionary is in Devanagari, so M/n/N variations matter
+                        variants = self.generate_anusvara_variants(lookup_word)
+
+                        entries = None
+                        matched_variant = None
+
+                        # Try each variant until we find a match
+                        for variant in variants:
+                            entries = self.dictionary.lookup(variant, script='HK')
+                            if entries:
+                                matched_variant = variant
+                                break
+
                         if entries:
                             entry = entries[0]
                             analysis['dictionary'] = {
@@ -981,6 +1160,9 @@ class PrakritUnifiedParser:
                                 'meanings': [m.get('definition', '') for m in entry.get('meanings', [])[:3]],
                                 'is_desya': entry.get('is_desya', False)
                             }
+                            # Add note if variant was used
+                            if matched_variant != lookup_word:
+                                analysis['dictionary']['matched_variant'] = matched_variant
                     except:
                         pass  # Dictionary lookup is optional
 
