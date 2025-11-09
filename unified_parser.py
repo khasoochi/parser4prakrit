@@ -509,8 +509,53 @@ class PrakritUnifiedParser:
 
         return results
 
+    def apply_vowel_sandhi_reverse(self, base: str) -> List[Tuple[str, str]]:
+        """
+        Reverse vowel sandhi transformations to find potential verb roots.
+        Returns list of (potential_root, sandhi_rule) tuples.
+
+        Prakrit vowel sandhi rules:
+        - ī (I) + consonant suffix → e (NI + mo → Nemo)
+        - ū (U) + consonant suffix → o (BhU + ti → Bhoti)
+        - ai/e → A/ā in some contexts
+        - o → U/ū in some contexts
+        """
+        candidates = []
+
+        if not base:
+            return candidates
+
+        # Rule 1: e → I (ī)
+        # Example: "Ne" from "Nemo" → "NI" root
+        if base.endswith('e'):
+            i_root = base[:-1] + 'I'
+            candidates.append((i_root, 'e→ī sandhi'))
+            # Also try short i
+            i_short_root = base[:-1] + 'i'
+            candidates.append((i_short_root, 'e→i sandhi'))
+
+        # Rule 2: o → U (ū)
+        # Example: "Bho" from "Bhoti" → "BhU" root
+        if base.endswith('o'):
+            u_root = base[:-1] + 'U'
+            candidates.append((u_root, 'o→ū sandhi'))
+            # Also try short u
+            u_short_root = base[:-1] + 'u'
+            candidates.append((u_short_root, 'o→u sandhi'))
+
+        # Rule 3: a → A (ā)
+        if base.endswith('a'):
+            a_root = base[:-1] + 'A'
+            candidates.append((a_root, 'a→ā extension'))
+
+        # Rule 4: Also check for base + A/I/U directly (no sandhi)
+        for vowel in ['A', 'I', 'U', 'a', 'i', 'u']:
+            candidates.append((base + vowel, f'vowel-ending +{vowel}'))
+
+        return candidates
+
     def analyze_as_verb(self, word_hk: str) -> List[Dict]:
-        """Analyze word as a Prakrit verb"""
+        """Analyze word as a Prakrit verb with vowel sandhi support"""
         results = []
 
         # First check if attested
@@ -536,38 +581,76 @@ class PrakritUnifiedParser:
             base = match['base']
             info = match['info']
 
-            # Try to find matching root
-            potential_root = None
+            # Collect ALL potential roots (both direct and sandhi)
+            root_candidates = []
+
+            # Strategy 1: Direct substring matches
             for i in range(len(base), 0, -1):
                 subroot = base[:i]
                 if subroot in self.verb_roots:
-                    potential_root = subroot
-                    break
+                    root_candidates.append({
+                        'root': subroot,
+                        'method': 'direct_match',
+                        'sandhi_note': None,
+                        'confidence_boost': 0.15
+                    })
 
-            confidence = info.get('confidence', 0.5)
+            # Strategy 2: Vowel sandhi reversals
+            sandhi_candidates = self.apply_vowel_sandhi_reverse(base)
+            for candidate_root, sandhi_rule in sandhi_candidates:
+                if candidate_root in self.verb_roots:
+                    root_candidates.append({
+                        'root': candidate_root,
+                        'method': 'sandhi_reversal',
+                        'sandhi_note': sandhi_rule,
+                        'confidence_boost': 0.20  # Slightly higher for sandhi (more sophisticated)
+                    })
+                # Also try partial matches for compound roots
+                for i in range(len(candidate_root), 0, -1):
+                    if candidate_root[:i] in self.verb_roots:
+                        root_candidates.append({
+                            'root': candidate_root[:i],
+                            'method': 'sandhi_reversal_partial',
+                            'sandhi_note': sandhi_rule,
+                            'confidence_boost': 0.12
+                        })
 
-            # Adjust confidence based on root match
-            if potential_root:
-                confidence += 0.15
-                note = f"Root '{potential_root}' found in verb list"
-            else:
-                confidence -= 0.1
-                potential_root = base
-                note = "Root not attested - guessed from form"
+            # If no attested root found, use the base as a guess
+            if not root_candidates:
+                root_candidates.append({
+                    'root': base,
+                    'method': 'unattested_guess',
+                    'sandhi_note': None,
+                    'confidence_boost': -0.1
+                })
 
-            analysis = {
-                'form': word_hk,
-                'root': potential_root,
-                'ending': ending,
-                'tense': info.get('tense'),
-                'person': info.get('person'),
-                'number': info.get('number'),
-                'type': 'verb',
-                'source': 'ending_based_guess',
-                'confidence': min(max(confidence, 0.1), 1.0),
-                'notes': [f"Ending-based analysis: {note}"]
-            }
-            results.append(analysis)
+            # Create analysis for each root candidate
+            for candidate in root_candidates:
+                confidence = info.get('confidence', 0.5) + candidate['confidence_boost']
+
+                if candidate['sandhi_note']:
+                    note = f"Root '{candidate['root']}' found via vowel sandhi ({candidate['sandhi_note']})"
+                    source = 'sandhi_analysis'
+                elif candidate['method'] == 'direct_match':
+                    note = f"Root '{candidate['root']}' found in verb list"
+                    source = 'ending_based_guess'
+                else:
+                    note = "Root not attested - guessed from form"
+                    source = 'ending_based_guess'
+
+                analysis = {
+                    'form': word_hk,
+                    'root': candidate['root'],
+                    'ending': ending,
+                    'tense': info.get('tense'),
+                    'person': info.get('person'),
+                    'number': info.get('number'),
+                    'type': 'verb',
+                    'source': source,
+                    'confidence': min(max(confidence, 0.1), 1.0),
+                    'notes': [f"Ending-based analysis: {note}"]
+                }
+                results.append(analysis)
 
         return results
 
