@@ -34,6 +34,7 @@ class PrakritUnifiedParser:
 
     def __init__(self):
         self.load_data()
+        self.load_feedback_data()
         self.initialize_suffix_database()
 
     def load_data(self):
@@ -66,6 +67,144 @@ class PrakritUnifiedParser:
             print(f"Warning: Could not load all_noun_forms.json: {e}")
             self.all_noun_forms = {}
 
+    def load_feedback_data(self):
+        """Load user feedback data for learning"""
+        try:
+            feedback_path = os.path.join(os.path.dirname(__file__), 'user_feedback.json')
+            with open(feedback_path, encoding='utf-8') as f:
+                self.feedback_data = json.load(f)
+        except Exception as e:
+            # Initialize empty feedback data
+            self.feedback_data = {
+                'form_corrections': {},  # form -> list of correct analyses
+                'suffix_accuracy': {},    # suffix -> {correct: count, incorrect: count}
+                'total_feedback': 0
+            }
+
+    def save_feedback_data(self):
+        """Save user feedback data"""
+        try:
+            feedback_path = os.path.join(os.path.dirname(__file__), 'user_feedback.json')
+            with open(feedback_path, 'w', encoding='utf-8') as f:
+                json.dump(self.feedback_data, f, ensure_ascii=False, indent=2)
+            return True
+        except Exception as e:
+            print(f"Error saving feedback: {e}")
+            return False
+
+    def record_feedback(self, word: str, correct_analysis: Dict, all_analyses: List[Dict]) -> Dict:
+        """
+        Record user feedback about which analysis is correct
+
+        Args:
+            word: The Prakrit word being analyzed
+            correct_analysis: The analysis marked as correct by the user
+            all_analyses: All analyses that were returned
+
+        Returns:
+            Status dict with success/error message
+        """
+        try:
+            # Record the correction
+            if word not in self.feedback_data['form_corrections']:
+                self.feedback_data['form_corrections'][word] = []
+
+            self.feedback_data['form_corrections'][word].append({
+                'correct_analysis': correct_analysis,
+                'timestamp': str(__import__('datetime').datetime.now())
+            })
+
+            # Update suffix accuracy tracking
+            correct_suffix = correct_analysis.get('suffix') or correct_analysis.get('ending')
+            if correct_suffix:
+                if correct_suffix not in self.feedback_data['suffix_accuracy']:
+                    self.feedback_data['suffix_accuracy'][correct_suffix] = {
+                        'correct': 0,
+                        'incorrect': 0
+                    }
+
+                # Mark this suffix as correct
+                self.feedback_data['suffix_accuracy'][correct_suffix]['correct'] += 1
+
+                # Mark other suffixes in the analyses as incorrect
+                for analysis in all_analyses:
+                    if analysis == correct_analysis:
+                        continue
+                    other_suffix = analysis.get('suffix') or analysis.get('ending')
+                    if other_suffix:
+                        if other_suffix not in self.feedback_data['suffix_accuracy']:
+                            self.feedback_data['suffix_accuracy'][other_suffix] = {
+                                'correct': 0,
+                                'incorrect': 0
+                            }
+                        self.feedback_data['suffix_accuracy'][other_suffix]['incorrect'] += 1
+
+            self.feedback_data['total_feedback'] += 1
+
+            # Save to file
+            if self.save_feedback_data():
+                return {
+                    'success': True,
+                    'message': 'Feedback recorded successfully',
+                    'total_feedback': self.feedback_data['total_feedback']
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': 'Failed to save feedback'
+                }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    def apply_learned_adjustments(self, analyses: List[Dict]) -> List[Dict]:
+        """
+        Apply confidence adjustments based on user feedback
+
+        Args:
+            analyses: List of analysis dicts
+
+        Returns:
+            Analyses with adjusted confidence scores
+        """
+        for analysis in analyses:
+            suffix = analysis.get('suffix') or analysis.get('ending')
+            if not suffix:
+                continue
+
+            # Check if we have feedback for this suffix
+            if suffix in self.feedback_data['suffix_accuracy']:
+                stats = self.feedback_data['suffix_accuracy'][suffix]
+                correct = stats['correct']
+                incorrect = stats['incorrect']
+                total = correct + incorrect
+
+                if total > 0:
+                    # Calculate accuracy rate
+                    accuracy = correct / total
+
+                    # Adjust confidence based on historical accuracy
+                    if accuracy > 0.8 and correct >= 3:
+                        # High confidence - boost it
+                        analysis['confidence'] = min(1.0, analysis['confidence'] + 0.10)
+                        analysis['notes'] = analysis.get('notes', []) + [
+                            f"Confidence boosted by user feedback ({correct}/{total} correct)"
+                        ]
+                    elif accuracy < 0.3 and total >= 3:
+                        # Low confidence - reduce it
+                        analysis['confidence'] = max(0.1, analysis['confidence'] - 0.15)
+                        analysis['notes'] = analysis.get('notes', []) + [
+                            f"Confidence reduced by user feedback ({correct}/{total} correct)"
+                        ]
+
+        # Re-sort by adjusted confidence
+        analyses.sort(key=lambda x: x.get('confidence', 0), reverse=True)
+
+        return analyses
+
     def initialize_suffix_database(self):
         """Initialize comprehensive suffix database with priority and blocking rules"""
 
@@ -79,7 +218,16 @@ class PrakritUnifiedParser:
                 'must_precede': ['ā', 'ī', 'ū', 'e'],
                 'blocks': ['o', 'to', 'into'],
                 'priority': 5,
-                'confidence': 0.9
+                'confidence': 0.95
+            },
+            'hiMto': {  # With anusvara
+                'cases': ['ablative'],
+                'numbers': ['singular', 'plural'],
+                'genders': ['masculine', 'feminine', 'neuter'],
+                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'blocks': ['o', 'to', 'iMto', 'into'],
+                'priority': 5,
+                'confidence': 0.95
             },
             'sunto': {
                 'cases': ['ablative'],
@@ -88,7 +236,16 @@ class PrakritUnifiedParser:
                 'must_precede': ['ā', 'ī', 'ū', 'e'],
                 'blocks': ['o', 'to', 'unto'],
                 'priority': 5,
-                'confidence': 0.9
+                'confidence': 0.95
+            },
+            'suMto': {  # With anusvara
+                'cases': ['ablative'],
+                'numbers': ['plural'],
+                'genders': ['masculine', 'feminine', 'neuter'],
+                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'blocks': ['o', 'to', 'uMto', 'unto'],
+                'priority': 5,
+                'confidence': 0.95
             },
             # 3-character suffixes
             'hiM': {
@@ -146,13 +303,13 @@ class PrakritUnifiedParser:
                 'confidence': 0.85
             },
             'NaM': {
-                'cases': ['instrumental', 'dative', 'genitive'],
-                'numbers': ['singular (inst)', 'plural (dat/gen)'],
+                'cases': ['instrumental'],  # Primarily instrumental with long vowels
+                'numbers': ['singular', 'plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
                 'must_precede': ['ā', 'ī', 'ū', 'e'],
                 'blocks': ['M', 'aM'],
                 'priority': 3,
-                'confidence': 0.8
+                'confidence': 0.90
             },
             'iM': {
                 'cases': ['nominative', 'accusative'],
@@ -192,13 +349,13 @@ class PrakritUnifiedParser:
                 'confidence': 0.85
             },
             'Na': {
-                'cases': ['instrumental', 'dative', 'genitive'],
-                'numbers': ['singular (inst)', 'plural (dat/gen)'],
+                'cases': ['instrumental'],  # Primarily instrumental with long vowels
+                'numbers': ['singular', 'plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
                 'must_precede': ['ā', 'ī', 'ū', 'e'],
                 'blocks': ['a'],
                 'priority': 2,
-                'confidence': 0.8
+                'confidence': 0.90
             },
             'No': {
                 'cases': ['nominative', 'accusative', 'dative', 'genitive'],
@@ -413,7 +570,7 @@ class PrakritUnifiedParser:
             return ''
 
         # For suffixes attached to long vowel or 'e' forms
-        if suffix in ['hinto', 'sunto', 'hi', 'hiM', 'hi~', 'su', 'suM']:
+        if suffix in ['hinto', 'hiMto', 'sunto', 'suMto', 'hi', 'hiM', 'hi~', 'su', 'suM']:
             if base.endswith('e'):
                 return base[:-1] + 'a'  # a-stem
             elif base.endswith('ā'):
@@ -677,6 +834,9 @@ class PrakritUnifiedParser:
         all_analyses = noun_analyses + verb_analyses
         all_analyses.sort(key=lambda x: x.get('confidence', 0), reverse=True)
 
+        # Apply learned adjustments from user feedback
+        all_analyses = self.apply_learned_adjustments(all_analyses)
+
         # Add Devanagari forms if input was HK
         if original_script == 'HK':
             for analysis in all_analyses:
@@ -798,6 +958,77 @@ if HAS_FLASK:
 
             response.headers.add('Access-Control-Allow-Origin', '*')
             return response
+        except Exception as e:
+            return jsonify({
+                'error': str(e)
+            }), 500
+
+    @app.route('/api/feedback', methods=['POST', 'OPTIONS'])
+    def api_feedback():
+        """API endpoint for submitting user feedback"""
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'ok'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+            response.headers.add('Access-Control-Allow-Methods', 'POST')
+            return response
+
+        # Try to get data from multiple sources
+        try:
+            data = request.get_json(force=True, silent=True)
+        except:
+            data = None
+
+        if not data:
+            data = request.form.to_dict()
+
+        word = data.get('word', '')
+        correct_analysis_index = data.get('correct_index')
+        all_analyses = data.get('all_analyses', [])
+
+        if not word or correct_analysis_index is None or not all_analyses:
+            return jsonify({
+                'success': False,
+                'error': 'Missing required fields: word, correct_index, all_analyses'
+            }), 400
+
+        try:
+            correct_analysis_index = int(correct_analysis_index)
+            if correct_analysis_index < 0 or correct_analysis_index >= len(all_analyses):
+                return jsonify({
+                    'success': False,
+                    'error': 'Invalid correct_index'
+                }), 400
+
+            correct_analysis = all_analyses[correct_analysis_index]
+
+            # Record the feedback
+            result = parser.record_feedback(word, correct_analysis, all_analyses)
+
+            response = jsonify(result)
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
+
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
+
+    @app.route('/api/feedback/stats', methods=['GET'])
+    def api_feedback_stats():
+        """Get feedback statistics"""
+        try:
+            stats = {
+                'total_feedback': parser.feedback_data['total_feedback'],
+                'unique_forms': len(parser.feedback_data['form_corrections']),
+                'suffix_stats': parser.feedback_data['suffix_accuracy']
+            }
+
+            response = jsonify(stats)
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
+
         except Exception as e:
             return jsonify({
                 'error': str(e)
