@@ -300,7 +300,7 @@ class PrakritUnifiedParser:
                 'cases': ['ablative'],
                 'numbers': ['singular', 'plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
-                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'must_precede': ['a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e'],
                 'blocks': ['o', 'to', 'into'],
                 'priority': 5,
                 'confidence': 0.95
@@ -309,7 +309,7 @@ class PrakritUnifiedParser:
                 'cases': ['ablative'],
                 'numbers': ['singular', 'plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
-                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'must_precede': ['a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e'],
                 'blocks': ['o', 'to', 'iMto', 'into'],
                 'priority': 5,
                 'confidence': 0.95
@@ -318,7 +318,7 @@ class PrakritUnifiedParser:
                 'cases': ['ablative'],
                 'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
-                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'must_precede': ['a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e'],
                 'blocks': ['o', 'to', 'unto'],
                 'priority': 5,
                 'confidence': 0.95
@@ -327,7 +327,7 @@ class PrakritUnifiedParser:
                 'cases': ['ablative'],
                 'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
-                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'must_precede': ['a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e'],
                 'blocks': ['o', 'to', 'uMto', 'unto'],
                 'priority': 5,
                 'confidence': 0.95
@@ -337,7 +337,7 @@ class PrakritUnifiedParser:
                 'cases': ['instrumental'],
                 'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
-                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'must_precede': ['a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e'],
                 'blocks': ['M', 'iM'],
                 'priority': 3,
                 'confidence': 0.85
@@ -346,7 +346,7 @@ class PrakritUnifiedParser:
                 'cases': ['instrumental'],
                 'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
-                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'must_precede': ['a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e'],
                 'blocks': ['~', 'i~'],
                 'priority': 3,
                 'confidence': 0.85
@@ -382,7 +382,7 @@ class PrakritUnifiedParser:
                 'cases': ['locative'],
                 'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
-                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'must_precede': ['a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e'],
                 'blocks': ['M', 'uM'],
                 'priority': 3,
                 'confidence': 0.85
@@ -391,7 +391,7 @@ class PrakritUnifiedParser:
                 'cases': ['dative', 'genitive'],  # Dative and genitive plural
                 'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
-                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'must_precede': ['a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e'],
                 'blocks': ['M', 'aM'],
                 'priority': 3,
                 'confidence': 0.90
@@ -400,7 +400,7 @@ class PrakritUnifiedParser:
                 'cases': ['nominative', 'accusative'],
                 'numbers': ['plural'],
                 'genders': ['neuter'],
-                'must_precede': ['ā', 'ī', 'ū'],
+                'must_precede': ['ā', 'A', 'ī', 'I', 'ū', 'U'],
                 'blocks': ['M'],
                 'priority': 2,
                 'confidence': 0.85
@@ -409,7 +409,7 @@ class PrakritUnifiedParser:
                 'cases': ['nominative', 'accusative'],
                 'numbers': ['plural'],
                 'genders': ['neuter'],
-                'must_precede': ['ā', 'ī', 'ū'],
+                'must_precede': ['ā', 'A', 'ī', 'I', 'ū', 'U'],
                 'blocks': ['~'],
                 'priority': 2,
                 'confidence': 0.8
@@ -419,7 +419,7 @@ class PrakritUnifiedParser:
                 'cases': ['instrumental'],
                 'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
-                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'must_precede': ['a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e'],
                 'blocks': ['i'],
                 'priority': 2,
                 'confidence': 0.85
@@ -428,7 +428,7 @@ class PrakritUnifiedParser:
                 'cases': ['locative'],
                 'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
-                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'must_precede': ['a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e'],
                 'blocks': ['u'],
                 'priority': 2,
                 'confidence': 0.85
@@ -437,7 +437,7 @@ class PrakritUnifiedParser:
                 'cases': ['dative', 'genitive'],  # Dative and genitive plural
                 'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
-                'must_precede': ['ā', 'ī', 'ū', 'e'],
+                'must_precede': ['a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e'],
                 'blocks': ['a'],
                 'priority': 2,
                 'confidence': 0.90
@@ -455,7 +455,7 @@ class PrakritUnifiedParser:
                 'cases': ['nominative', 'accusative'],
                 'numbers': ['plural'],
                 'genders': ['neuter'],
-                'must_precede': ['ā', 'ī', 'ū'],
+                'must_precede': ['ā', 'A', 'ī', 'I', 'ū', 'U'],
                 'blocks': ['i'],
                 'priority': 2,
                 'confidence': 0.8
@@ -565,7 +565,7 @@ class PrakritUnifiedParser:
 
     def generate_anusvara_variants(self, word: str) -> List[str]:
         """
-        Generate all valid anusvara variants for dictionary lookup
+        Generate all valid anusvara/nasal variants for dictionary lookup
 
         Prakrit phonology: M (anusvara) before consonants can be:
         - Before velars (k, g): ṅ
@@ -575,6 +575,9 @@ class PrakritUnifiedParser:
         - Before labials (p, b, m): m
         - Can also remain as M/ṃ
 
+        Additionally, databases may store nasals in different ways,
+        so we generate multiple variants for better matching.
+
         Args:
             word: Word in HK transliteration
 
@@ -583,6 +586,7 @@ class PrakritUnifiedParser:
         """
         variants = [word]  # Always include original
 
+        # Context-dependent assimilation: M/ṃ before consonants
         # M/ṃ before velars → ṅ
         variant = re.sub(r'[Mṃ](?=[kg])', 'ṅ', word)
         if variant != word:
@@ -608,11 +612,28 @@ class PrakritUnifiedParser:
         if variant != word:
             variants.append(variant)
 
-        # Also try M → ṃ and vice versa
+        # M ↔ ṃ conversion
         if 'M' in word:
             variants.append(word.replace('M', 'ṃ'))
         if 'ṃ' in word:
             variants.append(word.replace('ṃ', 'M'))
+
+        # Additional nasal variants for database matching
+        # N can be stored as ṇ (retroflex), n (dental), ñ (palatal), ṅ (velar), or m (labial)
+        # depending on transcription conventions
+        if 'N' in word:
+            # Try all nasal variants where N appears
+            variants.append(word.replace('N', 'ṇ'))  # Retroflex (common)
+            variants.append(word.replace('N', 'n'))  # Dental
+            variants.append(word.replace('N', 'ñ'))  # Palatal
+            variants.append(word.replace('N', 'ṅ'))  # Velar
+            variants.append(word.replace('N', 'M'))  # Anusvara
+            variants.append(word.replace('N', 'ṃ'))  # Anusvara (dot)
+
+        # Reverse: try N for other nasals (in case database uses capital N)
+        for nasal in ['ṇ', 'ñ', 'ṅ', 'n', 'm']:
+            if nasal in word:
+                variants.append(word.replace(nasal, 'N'))
 
         # Remove duplicates while preserving order
         seen = set()
@@ -803,18 +824,21 @@ class PrakritUnifiedParser:
         if suffix in ['hinto', 'hiMto', 'sunto', 'suMto', 'hi', 'hiM', 'hi~', 'su', 'suM']:
             if base.endswith('e'):
                 return base[:-1] + 'a'  # a-stem
-            elif base.endswith('ā'):
+            # Handle ā/A (long a)
+            elif base.endswith(('ā', 'A')):
                 if gender == 'feminine':
                     return base  # ā-stem feminine
                 return base[:-1] + 'a'  # masculine
-            elif base.endswith('ī'):
+            # Handle ī/I (long i)
+            elif base.endswith(('ī', 'I')):
                 if gender == 'feminine':
                     return base  # ī-stem feminine
-                return base[:-1] + 'i'  # masculine
-            elif base.endswith('ū'):
+                return base[:-1] + 'i'  # masculine - shorten to i
+            # Handle ū/U (long u)
+            elif base.endswith(('ū', 'U')):
                 if gender == 'feminine':
                     return base  # ū-stem feminine
-                return base[:-1] + 'u'  # masculine
+                return base[:-1] + 'u'  # masculine - shorten to u
 
         # For suffixes attached directly to stem
         elif suffix in ['ssa', 'mmi', 'No']:
@@ -826,13 +850,14 @@ class PrakritUnifiedParser:
         elif suffix in ['Na', 'NaM']:
             if base.endswith('e'):
                 return base[:-1] + 'a'  # instrumental singular
-            elif base.endswith(('ā', 'ī', 'ū')):
-                vowel_map = {'ā': 'a', 'ī': 'i', 'ū': 'u'}
+            elif base.endswith(('ā', 'ī', 'ū', 'A', 'I', 'U')):
+                # Convert long vowels to short (both diacritic and HK forms)
+                vowel_map = {'ā': 'a', 'ī': 'i', 'ū': 'u', 'A': 'a', 'I': 'i', 'U': 'u'}
                 return base[:-1] + vowel_map[base[-1]]
 
         # For tto
         elif suffix == 'tto':
-            if not base.endswith(('a', 'i', 'u', 'ā', 'ī', 'ū')):
+            if not base.endswith(('a', 'i', 'u', 'ā', 'ī', 'ū', 'A', 'I', 'U')):
                 return base + 'a'
             return base
 
@@ -1055,9 +1080,9 @@ class PrakritUnifiedParser:
 
             # Create analysis for each root candidate
             for candidate in root_candidates:
-                # Validate Prakrit phonology: no consonant-ending roots
-                if not self.is_valid_prakrit_stem(candidate['root']):
-                    continue
+                # Note: Verb roots CAN end in consonants (e.g., muN, jAN)
+                # Only the final inflected forms must end in vowels
+                # So we do NOT apply phonological validation here
 
                 confidence = info.get('confidence', 0.5) + candidate['confidence_boost']
 
