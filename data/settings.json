@@ -1,0 +1,17 @@
+{
+  "script_preference": "devanagari",
+  "grammar_terminology": "devanagari",
+  "font_size": 16,
+  "theme": "light",
+  "sound_enabled": true,
+  "pronunciation_enabled": false,
+  "difficulty": "medium",
+  "timed_mode": false,
+  "hints_enabled": true,
+  "timer_seconds": 10,
+  "current_user": "default",
+  "last_game": null,
+  "window_width": 1024,
+  "window_height": 768,
+  "window_maximized": false
+}
