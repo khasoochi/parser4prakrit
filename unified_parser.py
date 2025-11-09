@@ -78,12 +78,24 @@ class PrakritUnifiedParser:
         self.all_noun_forms = self.load_noun_forms_db()
 
     def load_verb_roots(self):
-        """Load verb roots from verbs1.json"""
+        """Load verb roots from verbs1.json and filter out invalid single-letter consonants"""
         try:
             verbs1_path = os.path.join(os.path.dirname(__file__), 'verbs1.json')
             with open(verbs1_path, encoding='utf-8') as f:
                 verbs1_data = json.load(f)
-                return set(verbs1_data.values())
+                roots = set(verbs1_data.values())
+
+                # Filter out single-letter consonants (they can't be valid Prakrit roots)
+                # Only single-letter vowels are valid (A, I, U, a, i, u, e, o)
+                valid_single_letters = {'A', 'I', 'U', 'a', 'i', 'u', 'e', 'o', 'ā', 'ī', 'ū'}
+                filtered_roots = set()
+                for root in roots:
+                    if len(root) == 1 and root not in valid_single_letters:
+                        # Skip single-letter consonants like N, d, g, etc.
+                        continue
+                    filtered_roots.add(root)
+
+                return filtered_roots
         except Exception as e:
             print(f"Warning: Could not load verbs1.json: {e}")
             return set()
