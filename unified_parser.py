@@ -622,10 +622,31 @@ if HAS_FLASK:
     def index():
         return render_template('unified_analyzer.html')
 
-    @app.route('/api/parse', methods=['POST'])
+    @app.route('/api/parse', methods=['POST', 'OPTIONS'])
     def api_parse():
         """API endpoint for parsing"""
-        data = request.get_json() or request.form
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'ok'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+            response.headers.add('Access-Control-Allow-Methods', 'POST')
+            return response
+
+        # Try to get data from multiple sources
+        try:
+            data = request.get_json(force=True, silent=True)
+        except:
+            data = None
+
+        if not data:
+            data = request.form.to_dict()
+
+        if not data:
+            try:
+                data = {'form': request.data.decode('utf-8')}
+            except:
+                data = {}
+
         form = data.get('form', '')
 
         if not form or not form.strip():
@@ -636,17 +657,40 @@ if HAS_FLASK:
 
         try:
             result = parser.parse(form)
-            return jsonify(result)
+            response = jsonify(result)
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
         except Exception as e:
             return jsonify({
                 'success': False,
                 'error': f'Parser error: {str(e)}'
             }), 500
 
-    @app.route('/api/analyze', methods=['POST'])
+    @app.route('/api/analyze', methods=['POST', 'OPTIONS'])
     def api_analyze():
         """Backward compatibility with old /analyze endpoint"""
-        data = request.get_json() or request.form
+        if request.method == 'OPTIONS':
+            response = jsonify({'status': 'ok'})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+            response.headers.add('Access-Control-Allow-Methods', 'POST')
+            return response
+
+        # Try to get data from multiple sources
+        try:
+            data = request.get_json(force=True, silent=True)
+        except:
+            data = None
+
+        if not data:
+            data = request.form.to_dict()
+
+        if not data:
+            try:
+                data = {'verb_form': request.data.decode('utf-8')}
+            except:
+                data = {}
+
         verb_form = data.get('verb_form', '')
 
         if not verb_form:
@@ -660,14 +704,17 @@ if HAS_FLASK:
 
             # Transform to old format
             if result['success']:
-                return jsonify({
+                response = jsonify({
                     'results': result['analyses']
                 })
             else:
-                return jsonify({
+                response = jsonify({
                     'error': result.get('error'),
                     'suggestions': result.get('suggestions', [])
-                }), 400
+                })
+
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
         except Exception as e:
             return jsonify({
                 'error': str(e)
