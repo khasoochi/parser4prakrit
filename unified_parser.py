@@ -303,8 +303,8 @@ class PrakritUnifiedParser:
                 'confidence': 0.85
             },
             'NaM': {
-                'cases': ['instrumental'],  # Primarily instrumental with long vowels
-                'numbers': ['singular', 'plural'],
+                'cases': ['dative', 'genitive'],  # Dative and genitive plural
+                'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
                 'must_precede': ['ā', 'ī', 'ū', 'e'],
                 'blocks': ['M', 'aM'],
@@ -349,8 +349,8 @@ class PrakritUnifiedParser:
                 'confidence': 0.85
             },
             'Na': {
-                'cases': ['instrumental'],  # Primarily instrumental with long vowels
-                'numbers': ['singular', 'plural'],
+                'cases': ['dative', 'genitive'],  # Dative and genitive plural
+                'numbers': ['plural'],
                 'genders': ['masculine', 'feminine', 'neuter'],
                 'must_precede': ['ā', 'ī', 'ū', 'e'],
                 'blocks': ['a'],
@@ -564,6 +564,36 @@ class PrakritUnifiedParser:
 
         return sorted(matches, key=lambda x: x['priority'], reverse=True)
 
+    def is_valid_prakrit_stem(self, stem: str) -> bool:
+        """
+        Validate if a stem follows Prakrit phonological rules
+
+        Key Prakrit phonological constraints:
+        1. NO consonant-ending words - all Prakrit words must end in vowels
+        2. Valid ending vowels: a, ā, i, ī, u, ū, e, o
+        3. Anusvara (M/ṃ) is allowed as final
+
+        Args:
+            stem: The reconstructed stem to validate
+
+        Returns:
+            True if valid Prakrit stem, False otherwise
+        """
+        if not stem or len(stem) < 1:
+            return False
+
+        # Get last character
+        last_char = stem[-1]
+
+        # Valid Prakrit word endings (all must be vowels or anusvara)
+        valid_endings = {'a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e', 'o', 'M', 'ṃ', '~'}
+
+        # Check if ends with valid character
+        if last_char not in valid_endings:
+            return False
+
+        return True
+
     def reconstruct_noun_stem(self, base: str, suffix: str, gender: str) -> str:
         """Reconstruct noun stem from base and suffix"""
         if not base:
@@ -639,6 +669,10 @@ class PrakritUnifiedParser:
                 stem = self.reconstruct_noun_stem(base, suffix, gender)
 
                 if not stem or len(stem) < 2:
+                    continue
+
+                # Validate Prakrit phonology: no consonant-ending stems
+                if not self.is_valid_prakrit_stem(stem):
                     continue
 
                 # Create analysis for each case possibility
@@ -783,6 +817,10 @@ class PrakritUnifiedParser:
 
             # Create analysis for each root candidate
             for candidate in root_candidates:
+                # Validate Prakrit phonology: no consonant-ending roots
+                if not self.is_valid_prakrit_stem(candidate['root']):
+                    continue
+
                 confidence = info.get('confidence', 0.5) + candidate['confidence_boost']
 
                 if candidate['sandhi_note']:
