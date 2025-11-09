@@ -824,18 +824,21 @@ class PrakritUnifiedParser:
         if suffix in ['hinto', 'hiMto', 'sunto', 'suMto', 'hi', 'hiM', 'hi~', 'su', 'suM']:
             if base.endswith('e'):
                 return base[:-1] + 'a'  # a-stem
-            elif base.endswith('ā'):
+            # Handle ā/A (long a)
+            elif base.endswith(('ā', 'A')):
                 if gender == 'feminine':
                     return base  # ā-stem feminine
                 return base[:-1] + 'a'  # masculine
-            elif base.endswith('ī'):
+            # Handle ī/I (long i)
+            elif base.endswith(('ī', 'I')):
                 if gender == 'feminine':
                     return base  # ī-stem feminine
-                return base[:-1] + 'i'  # masculine
-            elif base.endswith('ū'):
+                return base[:-1] + 'i'  # masculine - shorten to i
+            # Handle ū/U (long u)
+            elif base.endswith(('ū', 'U')):
                 if gender == 'feminine':
                     return base  # ū-stem feminine
-                return base[:-1] + 'u'  # masculine
+                return base[:-1] + 'u'  # masculine - shorten to u
 
         # For suffixes attached directly to stem
         elif suffix in ['ssa', 'mmi', 'No']:
@@ -847,13 +850,14 @@ class PrakritUnifiedParser:
         elif suffix in ['Na', 'NaM']:
             if base.endswith('e'):
                 return base[:-1] + 'a'  # instrumental singular
-            elif base.endswith(('ā', 'ī', 'ū')):
-                vowel_map = {'ā': 'a', 'ī': 'i', 'ū': 'u'}
+            elif base.endswith(('ā', 'ī', 'ū', 'A', 'I', 'U')):
+                # Convert long vowels to short (both diacritic and HK forms)
+                vowel_map = {'ā': 'a', 'ī': 'i', 'ū': 'u', 'A': 'a', 'I': 'i', 'U': 'u'}
                 return base[:-1] + vowel_map[base[-1]]
 
         # For tto
         elif suffix == 'tto':
-            if not base.endswith(('a', 'i', 'u', 'ā', 'ī', 'ū')):
+            if not base.endswith(('a', 'i', 'u', 'ā', 'ī', 'ū', 'A', 'I', 'U')):
                 return base + 'a'
             return base
 
