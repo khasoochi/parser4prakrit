@@ -9,6 +9,11 @@
     --text-color: #333;
     --border-color: #ddd;
     --background-color: #f5f5f5;
+
+    /* Tab colors - updated for better distinction */
+    --tab-all-color: #6c5ce7;      /* Purple for "All" */
+    --tab-noun-color: #00b894;     /* Teal for "Noun" */
+    --tab-verb-color: #fd79a8;     /* Pink for "Verb" */
 }
 
 * {
@@ -308,5 +313,125 @@ footer a:hover {
     
     .possibility-item {
         padding: 0.8rem;
+    }
+}
+
+/* Feedback Button Styles */
+.feedback-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    font-size: 0.9em;
+}
+
+.feedback-btn:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.feedback-btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.feedback-prompt {
+    border-left: 4px solid var(--info-color);
+}
+
+/* Possibility item enhancements */
+.possibility-item {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.possibility-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateX(4px);
+}
+
+.best-match {
+    border-left: 4px solid var(--success-color);
+    background-color: rgba(39, 174, 96, 0.05);
+}
+
+/* Quick Feedback Buttons */
+.thumbs-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.thumbs-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+}
+
+.thumbs-up {
+    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+}
+
+.thumbs-up:hover:not(:disabled) {
+    box-shadow: 0 4px 15px rgba(0, 184, 148, 0.5);
+}
+
+.thumbs-down {
+    background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+}
+
+.thumbs-down:hover:not(:disabled) {
+    box-shadow: 0 4px 15px rgba(214, 48, 49, 0.5);
+}
+
+.report-btn {
+    background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1em;
+    transition: all 0.3s ease;
+}
+
+.report-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(253, 203, 110, 0.5);
+}
+
+.thumbs-btn:disabled, .report-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.feedback-quick {
+    border-left: 4px solid #667eea;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
