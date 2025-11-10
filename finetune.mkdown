@@ -1,0 +1,1178 @@
+# Prakrit Suffix Patterns and Disambiguation Rules
+
+Here are the **deterministic suffix patterns** that appear ONLY in specific grammatical positions. Use these as hard constraints for parsing:
+
+## Fixed Multi-Character Suffixes (Never Part of Stem)
+
+### **Ablative Markers**
+```python
+ABLATIVE_ONLY = {
+    'hinto': {
+        'cases': ['ablative'],
+        'numbers': ['singular', 'plural'],
+        'genders': ['masculine', 'feminine', 'neuter'],
+        'stem_ends_before': ['ā', 'ī', 'ū'],  # base_long + hinto
+        'examples': {
+            'devehinto': 'deva (m)',
+            'kaññāhinto': 'kaññā (f)',
+            'aggīhinto': 'aggi (m)'
+        }
+    },
+    'sunto': {
+        'cases': ['ablative'],
+        'numbers': ['plural'],
+        'genders': ['masculine', 'feminine', 'neuter'],
+        'stem_ends_before': ['ā', 'ī', 'ū', 'e'],
+        'examples': {
+            'devasunto': 'deva (m)',
+            'kaññāsunto': 'kaññā (f)',
+            'purisesunto': 'purisa (m)'
+        }
+    },
+    'tto': {
+        'cases': ['ablative'],
+        'numbers': ['singular', 'plural'],
+        'genders': ['masculine', 'feminine', 'neuter'],
+        'stem_ends_before': ['a', 'i', 'u', 'ā', 'ī', 'ū'],  # Can attach to various forms
+        'examples': {
+            'purisatto': 'purisa (m)',
+            'kaññatto': 'kaññā (f)',
+            'aggitto': 'aggi (m)'
+        }
+    }
+}
+```
+
+### **Instrumental Markers**
+```python
+INSTRUMENTAL_ONLY = {
+    'hi': {
+        'cases': ['instrumental'],
+        'numbers': ['plural'],
+        'genders': ['masculine', 'feminine', 'neuter'],
+        'stem_ends_before': ['ā', 'ī', 'ū', 'e'],
+        'examples': {
+            'purisehi': 'purisa (m)',
+            'kaññāhi': 'kaññā (f)',
+            'aggīhi': 'aggi (m)'
+        }
+    },
+    'hiM': {
+        'cases': ['instrumental'],
+        'numbers': ['plural'],
+        'genders': ['masculine', 'feminine', 'neuter'],
+        'stem_ends_before': ['ā', 'ī', 'ū', 'e'],
+        'examples': {
+            'purisehiM': 'purisa (m)',
+            'kaññāhiM': 'kaññā (f)'
+        }
+    },
+    'hi~': {
+        'cases': ['instrumental'],
+        'numbers': ['plural'],
+        'genders': ['masculine', 'feminine', 'neuter'],
+        'stem_ends_before': ['ā', 'ī', 'ū', 'e'],
+        'examples': {
+            'purisehi~': 'purisa (m)',
+            'kaññāhi~': 'kaññā (f)'
+        }
+    }
+}
+```
+
+### **Dative/Genitive Markers**
+```python
+DATIVE_GENITIVE_ONLY = {
+    'ssa': {
+        'cases': ['dative', 'genitive'],
+        'numbers': ['singular'],
+        'genders': ['masculine', 'feminine', 'neuter'],
+        'stem_ends_before': ['a', 'i', 'u'],  # Direct attachment to stem
+        'examples': {
+            'purisassa': 'purisa (m)',
+            'aggissa': 'aggi (m)',
+            'kaññassa': 'kaññā (f) - when used as kaññassa'
+        }
+    },
+    'Na': {
+        'cases': ['dative', 'genitive', 'instrumental'],
+        'numbers': ['plural (dat/gen)', 'singular (inst)'],
+        'genders': ['masculine', 'feminine', 'neuter'],
+        'context_required': True,  # Needs more context
+        'stem_ends_before': ['ā', 'ī', 'ū', 'e'],
+        'examples': {
+            'purisāNa': 'purisa (m) - gen/dat pl',
+            'puriseNa': 'purisa (m) - inst sg'
+        }
+    },
+    'NaM': {
+        'cases': ['dative', 'genitive', 'instrumental'],
+        'numbers': ['plural (dat/gen)', 'singular (inst)'],
+        'genders': ['masculine', 'feminine', 'neuter'],
+        'context_required': True,
+        'stem_ends_before': ['ā', 'ī', 'ū', 'e'],
+        'examples': {
+            'purisāNaM': 'purisa (m) - gen/dat pl',
+            'puriseNaM': 'purisa (m) - inst sg'
+        }
+    }
+}
+```
+
+### **Special Masculine/Neuter Markers**
+```python
+SPECIAL_MARKERS = {
+    'No': {
+        'cases': ['nominative', 'accusative', 'dative', 'genitive', 'ablative'],
+        'numbers': ['plural (nom/acc)', 'singular (dat/gen/abl)'],
+        'genders': ['masculine (i/u stems)', 'neuter (i/u stems)'],
+        'stem_ends_before': ['i', 'u'],  # Direct to stem
+        'examples': {
+            'aggiNo': 'aggi (m) - nom/acc pl OR dat/gen/abl sg',
+            'bhikkhuNo': 'bhikkhu (m)'
+        }
+    }
+}
+```
+
+### **Locative Markers**
+```python
+LOCATIVE_ONLY = {
+    'su': {
+        'cases': ['locative'],
+        'numbers': ['plural'],
+        'genders': ['masculine', 'feminine', 'neuter'],
+        'stem_ends_before': ['ā', 'ī', 'ū', 'e'],
+        'examples': {
+            'purisesu': 'purisa (m)',
+            'kaññāsu': 'kaññā (f)'
+        }
+    },
+    'suM': {
+        'cases': ['locative'],
+        'numbers': ['plural'],
+        'genders': ['masculine', 'feminine', 'neuter'],
+        'stem_ends_before': ['ā', 'ī', 'ū', 'e'],
+        'examples': {
+            'purisesuM': 'purisa (m)',
+            'kaññāsuM': 'kaññā (f)'
+        }
+    },
+    'mmi': {
+        'cases': ['locative'],
+        'numbers': ['singular'],
+        'genders': ['masculine', 'feminine', 'neuter'],
+        'stem_ends_before': ['a', 'i', 'u'],  # Direct to stem
+        'examples': {
+            'purisammi': 'purisa (m)',
+            'aggimmi': 'aggi (m)'
+        }
+    }
+}
+```
+
+## Suffix Priority and Parsing Rules
+
+### **Rule 1: Longest Suffix Match First**
+```python
+SUFFIX_PRIORITY = [
+    # 5 characters
+    'hinto',
+    'sunto',
+    
+    # 4 characters (none in this set)
+    
+    # 3 characters
+    'hiM', 'hi~', 'ssa', 'suM', 'mmi', 'tto',
+    
+    # 2 characters
+    'hi', 'su', 'Na', 'No',
+    
+    # 1 character (only after checking all above)
+    'M', 'o', 'e', etc.
+]
+
+def extract_suffix(word):
+    """
+    Try to match suffixes from longest to shortest
+    """
+    for suffix in SUFFIX_PRIORITY:
+        if word.endswith(suffix):
+            return suffix, word[:-len(suffix)]
+    return None, word
+```
+
+### **Rule 2: Vowel Before Suffix Context**
+```python
+SUFFIX_VOWEL_REQUIREMENTS = {
+    'hinto': ['ā', 'ī', 'ū'],      # MUST have long vowel before
+    'sunto': ['ā', 'ī', 'ū', 'e'],  # Long vowel or 'e'
+    'hi': ['ā', 'ī', 'ū', 'e'],     # Long vowel or 'e'
+    'hiM': ['ā', 'ī', 'ū', 'e'],
+    'hi~': ['ā', 'ī', 'ū', 'e'],
+    'su': ['ā', 'ī', 'ū', 'e'],
+    'suM': ['ā', 'ī', 'ū', 'e'],
+    'Na': ['ā', 'ī', 'ū', 'e'],     # Context-dependent
+    'NaM': ['ā', 'ī', 'ū', 'e'],
+    'ssa': ['a', 'i', 'u'],         # Short vowels (stem direct)
+    'No': ['i', 'u'],               # Only i/u stems
+    'mmi': ['a', 'i', 'u'],         # Stem direct
+    'tto': ['a', 'i', 'u', 'ā', 'ī', 'ū'],  # Flexible
+}
+
+def validate_suffix_context(base, suffix):
+    """
+    Check if the vowel before suffix is valid
+    """
+    if not base:
+        return False
+    
+    last_char = base[-1]
+    required_vowels = SUFFIX_VOWEL_REQUIREMENTS.get(suffix, [])
+    
+    if required_vowels and last_char not in required_vowels:
+        return False
+    
+    return True
+```
+
+### **Rule 3: Stem Reconstruction Logic**
+```python
+def reconstruct_stem(word, suffix, gender):
+    """
+    Given word and identified suffix, extract the actual stem
+    """
+    base = word[:-len(suffix)]
+    
+    # For suffixes that attach to modified stems
+    if suffix in ['hinto', 'sunto', 'hi', 'hiM', 'hi~', 'su', 'suM']:
+        # These attach to base_long (ā, ī, ū) or base_e
+        # Need to convert back to stem
+        
+        if base.endswith('ā'):
+            stem = base[:-1] + 'a'  # or just 'ā' for fem ā-stems
+            if gender == 'feminine' and base[-1] == 'ā':
+                return base  # ā-stem feminine keeps ā
+        elif base.endswith('ī'):
+            stem = base[:-1] + 'i'
+            if gender == 'feminine' and base[-1] == 'ī':
+                return base
+        elif base.endswith('ū'):
+            stem = base[:-1] + 'u'
+            if gender == 'feminine' and base[-1] == 'ū':
+                return base
+        elif base.endswith('e'):
+            # This is a-stem converted to e
+            stem = base[:-1] + 'a'
+        else:
+            stem = base
+            
+        return stem
+    
+    elif suffix in ['ssa', 'mmi', 'No']:
+        # These attach directly to stem
+        if suffix == 'ssa' or suffix == 'mmi':
+            # Just add back the stem vowel if needed
+            return base + 'a'  # Default assumption for a-stems
+            # For i/u stems: base already has i/u
+        elif suffix == 'No':
+            # i/u stem direct
+            return base  # Already complete stem
+    
+    elif suffix == 'tto':
+        # Can attach to stem directly or to modified forms
+        # Need more context to determine
+        # Conservative: treat base as is
+        return base + 'a'  # Guess a-stem
+    
+    elif suffix in ['Na', 'NaM']:
+        # Context-dependent:
+        # If before suffix is 'e' → instrumental sg of a-stem
+        # If before suffix is long vowel → dat/gen plural
+        
+        if base.endswith('e'):
+            # Instrumental singular: purise + Na → purisa
+            stem = base[:-1] + 'a'
+        elif base.endswith(('ā', 'ī', 'ū')):
+            # Dative/genitive plural: convert long to short
+            last_vowel = base[-1]
+            stem = base[:-1] + {'ā': 'a', 'ī': 'i', 'ū': 'u'}[last_vowel]
+        else:
+            stem = base
+            
+        return stem
+    
+    return base
+```
+
+## Fine-Tuning Example: `devehinto`
+
+```python
+def parse_devehinto():
+    word = "devehinto"
+    
+    # Step 1: Identify suffix (longest match)
+    if word.endswith('hinto'):
+        suffix = 'hinto'
+        base = 'deve'  # word[:-5]
+        
+        # Step 2: Validate suffix context
+        # 'hinto' requires base to end in long vowel or 'e'
+        if base[-1] == 'e':
+            # Valid! 'e' is allowed before 'hinto'
+            
+            # Step 3: Reconstruct stem
+            # 'hinto' attaches to base_long or base_e
+            # For a-stems: deve is deva + a→e conversion
+            stem = base[:-1] + 'a'  # deve → deva
+            
+            # Step 4: Determine case/number/gender
+            case = 'ablative'
+            number = 'singular' or 'plural'  # hinto appears in both
+            gender = 'masculine'  # (needs more context or default)
+            
+            return {
+                'stem': 'deva',
+                'case': 'ablative',
+                'number': 'singular/plural',
+                'gender': 'masculine',
+                'confidence': 0.95
+            }
+        else:
+            return None  # Invalid context
+    
+    # If someone tries:
+    # "devehint" as nominative singular
+    # Step 1: No valid suffix matches 't'
+    # Step 2: Try 'No' → doesn't match
+    # Step 3: Try 'o' → "devehinto" should give "devehint" stem
+    #         But this is WRONG!
+    # 
+    # PREVENTION: Check if removing 'o' leaves 'devehint'
+    # Then check if 'devehint' contains ANY known suffix
+    if 'hinto' in word:
+        # This word contains 'hinto' suffix
+        # Cannot be nominative singular ending in 'o'
+        # Reject this parse
+        return None
+```
+
+## Disambiguation Algorithm
+
+```python
+class ImprovedPrakritParser:
+    
+    def parse(self, word):
+        """
+        Enhanced parsing with suffix priority
+        """
+        analyses = []
+        
+        # Stage 1: Try longest suffixes first
+        for suffix in SUFFIX_PRIORITY:
+            if not word.endswith(suffix):
+                continue
+            
+            base = word[:-len(suffix)]
+            
+            # Validate suffix context
+            if not self.validate_suffix_context(base, suffix):
+                continue
+            
+            # Get all valid interpretations for this suffix
+            interpretations = self.get_suffix_interpretations(suffix)
+            
+            for interp in interpretations:
+                stem = self.reconstruct_stem(base, suffix, interp['gender'])
+                
+                # Validate stem is reasonable
+                if not self.is_valid_stem(stem):
+                    continue
+                
+                confidence = self.calculate_confidence(
+                    word, stem, suffix, interp
+                )
+                
+                analyses.append({
+                    'stem': stem,
+                    'suffix': suffix,
+                    'case': interp['case'],
+                    'number': interp['number'],
+                    'gender': interp['gender'],
+                    'confidence': confidence
+                })
+        
+        # Stage 2: Sort by confidence and return top analyses
+        analyses.sort(key=lambda x: x['confidence'], reverse=True)
+        
+        return analyses
+    
+    def validate_suffix_context(self, base, suffix):
+        """
+        Ensure vowel before suffix is valid
+        """
+        if not base:
+            return False
+        
+        required = SUFFIX_VOWEL_REQUIREMENTS.get(suffix, [])
+        if required and base[-1] not in required:
+            return False
+        
+        return True
+    
+    def get_suffix_interpretations(self, suffix):
+        """
+        Return all possible case/number/gender for a suffix
+        """
+        # Look up from the tables above
+        if suffix == 'hinto':
+            return [
+                {'case': 'ablative', 'number': 'singular', 'gender': 'masculine'},
+                {'case': 'ablative', 'number': 'singular', 'gender': 'feminine'},
+                {'case': 'ablative', 'number': 'plural', 'gender': 'masculine'},
+                {'case': 'ablative', 'number': 'plural', 'gender': 'feminine'},
+            ]
+        elif suffix == 'hi':
+            return [
+                {'case': 'instrumental', 'number': 'plural', 'gender': 'masculine'},
+                {'case': 'instrumental', 'number': 'plural', 'gender': 'feminine'},
+            ]
+        # ... etc for all suffixes
+        
+        return []
+```
+
+## Key Takeaway for `devehinto`
+
+**The problem**: Parser sees `-o` and tries to make `devehint` the stem.
+
+**The solution**:
+1. **Priority matching**: Check for `hinto` BEFORE checking for `o`
+2. **Greedy longest match**: Always match the longest valid suffix first
+3. **Suffix validation**: `hinto` requires vowel/`e` before it → `deve` is valid
+4. **Stem reconstruction**: `deve` + context (ablative) → reconstruct as `deva`
+5. **Reject invalid parses**: If trying to parse as nominative sg. in `-o`, check if remaining base contains known multi-char suffixes
+
+This ensures `devehinto` is correctly parsed as:
+- **Stem**: deva
+- **Suffix**: hinto
+- **Case**: ablative
+- **Number**: singular/plural
+
+Not as:
+- ~~**Stem**: devehint~~
+- ~~**Suffix**: o~~
+- ~~**Case**: nominative~~
+
+# Advanced Disambiguation Rules and Edge Cases
+
+## Complete Suffix Hierarchy with Blocking Rules
+
+```python
+class SuffixHierarchy:
+    """
+    Defines precedence and blocking rules for suffix matching
+    """
+    
+    # Multi-character suffixes that BLOCK single-character interpretations
+    BLOCKING_SUFFIXES = {
+        'hinto': {
+            'blocks': ['o', 'to', 'into'],  # If 'hinto' matches, don't try these
+            'pattern': r'(.+)(ā|ī|ū|e)hinto$',
+            'must_precede': ['ā', 'ī', 'ū', 'e']
+        },
+        'sunto': {
+            'blocks': ['o', 'to', 'unto'],
+            'pattern': r'(.+)(ā|ī|ū|e)sunto$',
+            'must_precede': ['ā', 'ī', 'ū', 'e']
+        },
+        'hiM': {
+            'blocks': ['M', 'iM'],
+            'pattern': r'(.+)(ā|ī|ū|e)hiM$',
+            'must_precede': ['ā', 'ī', 'ū', 'e']
+        },
+        'hi~': {
+            'blocks': ['~', 'i~'],
+            'pattern': r'(.+)(ā|ī|ū|e)hi~$',
+            'must_precede': ['ā', 'ī', 'ū', 'e']
+        },
+        'ssa': {
+            'blocks': ['a', 'sa'],
+            'pattern': r'(.+)(a|i|u)ssa$',
+            'must_precede': ['a', 'i', 'u']
+        },
+        'mmi': {
+            'blocks': ['i', 'mi'],
+            'pattern': r'(.+)(a|i|u)mmi$',
+            'must_precede': ['a', 'i', 'u']
+        },
+        'tto': {
+            'blocks': ['o', 'to'],
+            'pattern': r'(.+)tto$',
+            'must_precede': []  # Flexible
+        },
+        'suM': {
+            'blocks': ['M', 'uM'],
+            'pattern': r'(.+)(ā|ī|ū|e)suM$',
+            'must_precede': ['ā', 'ī', 'ū', 'e']
+        },
+        'NaM': {
+            'blocks': ['M', 'aM'],
+            'pattern': r'(.+)(ā|ī|ū|e)NaM$',
+            'must_precede': ['ā', 'ī', 'ū', 'e']
+        }
+    }
+    
+    # Two-character suffixes
+    TWO_CHAR_SUFFIXES = {
+        'hi': {
+            'blocks': ['i'],
+            'pattern': r'(.+)(ā|ī|ū|e)hi$',
+            'must_precede': ['ā', 'ī', 'ū', 'e']
+        },
+        'su': {
+            'blocks': ['u'],
+            'pattern': r'(.+)(ā|ī|ū|e)su$',
+            'must_precede': ['ā', 'ī', 'ū', 'e']
+        },
+        'Na': {
+            'blocks': ['a'],
+            'pattern': r'(.+)(ā|ī|ū|e)Na$',
+            'must_precede': ['ā', 'ī', 'ū', 'e']
+        },
+        'No': {
+            'blocks': ['o'],
+            'pattern': r'(.+)(i|u)No$',
+            'must_precede': ['i', 'u']
+        }
+    }
+    
+    # Single-character suffixes (lowest priority)
+    SINGLE_CHAR_SUFFIXES = ['M', 'o', 'e', 'a', 'i', 'u', 'A', 'I', 'U']
+```
+
+## Comprehensive Parsing Algorithm
+
+```python
+class PrakritStemParser:
+    
+    def __init__(self):
+        self.suffix_db = self._build_suffix_database()
+        self.stem_cache = {}
+    
+    def parse_word(self, word):
+        """
+        Main parsing entry point with multi-stage analysis
+        """
+        word_hk = transliterate_to_hk(word)
+        
+        # Stage 1: Suffix identification (greedy longest match)
+        suffix_matches = self._find_all_suffix_matches(word_hk)
+        
+        # Stage 2: Context validation
+        valid_matches = self._validate_contexts(word_hk, suffix_matches)
+        
+        # Stage 3: Stem reconstruction
+        analyses = []
+        for match in valid_matches:
+            stem_analyses = self._reconstruct_stem_with_gender(
+                word_hk, 
+                match['suffix'], 
+                match['base']
+            )
+            analyses.extend(stem_analyses)
+        
+        # Stage 4: Confidence scoring and ranking
+        scored_analyses = self._score_analyses(analyses)
+        
+        # Stage 5: Disambiguation
+        final_analyses = self._disambiguate(scored_analyses)
+        
+        return final_analyses
+    
+    def _find_all_suffix_matches(self, word):
+        """
+        Find all possible suffix matches, respecting blocking rules
+        """
+        matches = []
+        
+        # Try 5-char suffixes first
+        for suffix in ['hinto', 'sunto']:
+            if word.endswith(suffix):
+                base = word[:-len(suffix)]
+                matches.append({
+                    'suffix': suffix,
+                    'base': base,
+                    'priority': 5,
+                    'blocks': SuffixHierarchy.BLOCKING_SUFFIXES[suffix]['blocks']
+                })
+        
+        # Try 4-char suffixes (none currently, but extensible)
+        
+        # Try 3-char suffixes
+        for suffix in ['hiM', 'hi~', 'ssa', 'mmi', 'tto', 'suM', 'NaM']:
+            if word.endswith(suffix):
+                base = word[:-len(suffix)]
+                # Check if blocked by longer suffix
+                if not self._is_blocked(suffix, matches):
+                    matches.append({
+                        'suffix': suffix,
+                        'base': base,
+                        'priority': 3,
+                        'blocks': SuffixHierarchy.BLOCKING_SUFFIXES[suffix]['blocks']
+                    })
+        
+        # Try 2-char suffixes
+        for suffix in ['hi', 'su', 'Na', 'No']:
+            if word.endswith(suffix):
+                base = word[:-len(suffix)]
+                if not self._is_blocked(suffix, matches):
+                    matches.append({
+                        'suffix': suffix,
+                        'base': base,
+                        'priority': 2,
+                        'blocks': SuffixHierarchy.TWO_CHAR_SUFFIXES[suffix]['blocks']
+                    })
+        
+        # Try 1-char suffixes (only if not blocked)
+        for suffix in ['M', 'o', 'e', 'a', 'i', 'u']:
+            if word.endswith(suffix):
+                base = word[:-1]
+                if not self._is_blocked(suffix, matches):
+                    matches.append({
+                        'suffix': suffix,
+                        'base': base,
+                        'priority': 1,
+                        'blocks': []
+                    })
+        
+        return sorted(matches, key=lambda x: x['priority'], reverse=True)
+    
+    def _is_blocked(self, suffix, existing_matches):
+        """
+        Check if this suffix is blocked by a higher-priority match
+        """
+        for match in existing_matches:
+            if suffix in match['blocks']:
+                return True
+        return False
+    
+    def _validate_contexts(self, word, matches):
+        """
+        Validate that vowel before suffix is appropriate
+        """
+        valid = []
+        
+        for match in matches:
+            suffix = match['suffix']
+            base = match['base']
+            
+            if not base:
+                continue
+            
+            # Get required vowels for this suffix
+            required = self._get_required_preceding_vowels(suffix)
+            
+            if required:
+                last_char = base[-1]
+                if last_char not in required:
+                    continue  # Invalid context
+            
+            # Additional phonological checks
+            if not self._is_phonologically_valid(base, suffix):
+                continue
+            
+            valid.append(match)
+        
+        return valid
+    
+    def _get_required_preceding_vowels(self, suffix):
+        """
+        Return vowels that must precede this suffix
+        """
+        requirements = {
+            'hinto': ['ā', 'ī', 'ū', 'e'],
+            'sunto': ['ā', 'ī', 'ū', 'e'],
+            'hi': ['ā', 'ī', 'ū', 'e'],
+            'hiM': ['ā', 'ī', 'ū', 'e'],
+            'hi~': ['ā', 'ī', 'ū', 'e'],
+            'su': ['ā', 'ī', 'ū', 'e'],
+            'suM': ['ā', 'ī', 'ū', 'e'],
+            'Na': ['ā', 'ī', 'ū', 'e'],
+            'NaM': ['ā', 'ī', 'ū', 'e'],
+            'ssa': ['a', 'i', 'u'],
+            'mmi': ['a', 'i', 'u'],
+            'No': ['i', 'u'],
+            'tto': ['a', 'i', 'u', 'ā', 'ī', 'ū'],
+            # Single char suffixes have no strict requirements
+            'M': [],
+            'o': [],
+            'e': [],
+        }
+        
+        return requirements.get(suffix, [])
+    
+    def _is_phonologically_valid(self, base, suffix):
+        """
+        Check if base + suffix is phonologically natural in Prakrit
+        """
+        # Rule 1: No triple consonants
+        full_form = base + suffix
+        if re.search(r'[^aeiouāīū]{3,}', full_form):
+            return False
+        
+        # Rule 2: Certain consonant + suffix combinations are invalid
+        if base and suffix:
+            last_consonant = self._get_last_consonant(base)
+            first_of_suffix = suffix[0]
+            
+            # Example: retroflex + palatal clusters rare
+            invalid_clusters = [
+                ('T', 'c'), ('T', 's'), ('D', 'c'),
+                ('N', 'c'), ('N', 's')
+            ]
+            
+            if last_consonant and (last_consonant, first_of_suffix) in invalid_clusters:
+                return False
+        
+        return True
+    
+    def _get_last_consonant(self, base):
+        """
+        Extract last consonant from base (skipping final vowel)
+        """
+        consonants = 'kgcjTDNtdnpbmyrlvszh'
+        for i in range(len(base) - 1, -1, -1):
+            if base[i] in consonants:
+                return base[i]
+        return None
+    
+    def _reconstruct_stem_with_gender(self, word, suffix, base):
+        """
+        Reconstruct stem and determine possible genders
+        """
+        analyses = []
+        
+        # Get grammatical info for this suffix
+        suffix_info = self._get_suffix_grammatical_info(suffix)
+        
+        for info in suffix_info:
+            case = info['case']
+            number = info['number']
+            gender = info['gender']
+            
+            # Reconstruct stem based on suffix type and gender
+            stem = self._reconstruct_stem(base, suffix, case, number, gender)
+            
+            if stem and self._is_valid_stem(stem):
+                analyses.append({
+                    'word': word,
+                    'stem': stem,
+                    'suffix': suffix,
+                    'case': case,
+                    'number': number,
+                    'gender': gender,
+                    'base': base
+                })
+        
+        return analyses
+    
+    def _get_suffix_grammatical_info(self, suffix):
+        """
+        Return all possible case/number/gender combinations for suffix
+        """
+        suffix_grammar = {
+            'hinto': [
+                {'case': 'ablative', 'number': 'singular', 'gender': 'masculine'},
+                {'case': 'ablative', 'number': 'singular', 'gender': 'feminine'},
+                {'case': 'ablative', 'number': 'plural', 'gender': 'masculine'},
+                {'case': 'ablative', 'number': 'plural', 'gender': 'feminine'},
+            ],
+            'sunto': [
+                {'case': 'ablative', 'number': 'plural', 'gender': 'masculine'},
+                {'case': 'ablative', 'number': 'plural', 'gender': 'feminine'},
+            ],
+            'hi': [
+                {'case': 'instrumental', 'number': 'plural', 'gender': 'masculine'},
+                {'case': 'instrumental', 'number': 'plural', 'gender': 'feminine'},
+            ],
+            'hiM': [
+                {'case': 'instrumental', 'number': 'plural', 'gender': 'masculine'},
+                {'case': 'instrumental', 'number': 'plural', 'gender': 'feminine'},
+            ],
+            'hi~': [
+                {'case': 'instrumental', 'number': 'plural', 'gender': 'masculine'},
+                {'case': 'instrumental', 'number': 'plural', 'gender': 'feminine'},
+            ],
+            'ssa': [
+                {'case': 'dative', 'number': 'singular', 'gender': 'masculine'},
+                {'case': 'genitive', 'number': 'singular', 'gender': 'masculine'},
+            ],
+            'mmi': [
+                {'case': 'locative', 'number': 'singular', 'gender': 'masculine'},
+            ],
+            'su': [
+                {'case': 'locative', 'number': 'plural', 'gender': 'masculine'},
+                {'case': 'locative', 'number': 'plural', 'gender': 'feminine'},
+            ],
+            'suM': [
+                {'case': 'locative', 'number': 'plural', 'gender': 'masculine'},
+                {'case': 'locative', 'number': 'plural', 'gender': 'feminine'},
+            ],
+            'Na': [
+                # Ambiguous: needs vowel context
+                {'case': 'instrumental', 'number': 'singular', 'gender': 'masculine', 'condition': 'ends_in_e'},
+                {'case': 'dative', 'number': 'plural', 'gender': 'masculine', 'condition': 'ends_in_long_vowel'},
+                {'case': 'genitive', 'number': 'plural', 'gender': 'masculine', 'condition': 'ends_in_long_vowel'},
+            ],
+            'NaM': [
+                {'case': 'instrumental', 'number': 'singular', 'gender': 'masculine', 'condition': 'ends_in_e'},
+                {'case': 'dative', 'number': 'plural', 'gender': 'masculine', 'condition': 'ends_in_long_vowel'},
+                {'case': 'genitive', 'number': 'plural', 'gender': 'masculine', 'condition': 'ends_in_long_vowel'},
+            ],
+            'No': [
+                {'case': 'nominative', 'number': 'plural', 'gender': 'masculine'},
+                {'case': 'accusative', 'number': 'plural', 'gender': 'masculine'},
+                {'case': 'dative', 'number': 'singular', 'gender': 'masculine'},
+                {'case': 'genitive', 'number': 'singular', 'gender': 'masculine'},
+                {'case': 'ablative', 'number': 'singular', 'gender': 'masculine'},
+            ],
+            'tto': [
+                {'case': 'ablative', 'number': 'singular', 'gender': 'masculine'},
+                {'case': 'ablative', 'number': 'singular', 'gender': 'feminine'},
+                {'case': 'ablative', 'number': 'plural', 'gender': 'masculine'},
+                {'case': 'ablative', 'number': 'plural', 'gender': 'feminine'},
+            ],
+            'M': [
+                {'case': 'accusative', 'number': 'singular', 'gender': 'masculine'},
+                {'case': 'accusative', 'number': 'singular', 'gender': 'feminine'},
+                {'case': 'nominative', 'number': 'singular', 'gender': 'neuter'},
+                {'case': 'accusative', 'number': 'singular', 'gender': 'neuter'},
+            ],
+            'o': [
+                {'case': 'nominative', 'number': 'singular', 'gender': 'masculine'},
+            ],
+            # ... add more
+        }
+        
+        return suffix_grammar.get(suffix, [])
+    
+    def _reconstruct_stem(self, base, suffix, case, number, gender):
+        """
+        Reconstruct the base stem from the parsed base + context
+        """
+        # For ablative suffixes attached to long vowels
+        if suffix in ['hinto', 'sunto', 'hi', 'hiM', 'hi~', 'su', 'suM']:
+            if base.endswith('e'):
+                # a-stem: e → a
+                return base[:-1] + 'a'
+            elif base.endswith('ā'):
+                if gender == 'feminine':
+                    return base  # ā-stem feminine
+                else:
+                    return base[:-1] + 'a'  # a-stem masculine
+            elif base.endswith('ī'):
+                if gender == 'feminine':
+                    return base  # ī-stem feminine
+                else:
+                    return base[:-1] + 'i'  # i-stem masculine
+            elif base.endswith('ū'):
+                if gender == 'feminine':
+                    return base  # ū-stem feminine
+                else:
+                    return base[:-1] + 'u'  # u-stem masculine
+        
+        # For dative/genitive singular (ssa)
+        elif suffix == 'ssa':
+            # Attaches directly to stem
+            if base.endswith(('a', 'i', 'u')):
+                return base
+            else:
+                # Need to infer stem ending
+                return base + 'a'  # Default to a-stem
+        
+        # For locative singular (mmi)
+        elif suffix == 'mmi':
+            # Attaches directly to stem
+            return base
+        
+        # For Na/NaM (context-dependent)
+        elif suffix in ['Na', 'NaM']:
+            if base.endswith('e'):
+                # Instrumental singular: e → a
+                return base[:-1] + 'a'
+            elif base.endswith(('ā', 'ī', 'ū')):
+                # Dative/genitive plural: long → short
+                vowel_map = {'ā': 'a', 'ī': 'i', 'ū': 'u'}
+                return base[:-1] + vowel_map[base[-1]]
+        
+        # For No (i/u stems)
+        elif suffix == 'No':
+            # Attaches directly to stem
+            return base
+        
+        # For tto
+        elif suffix == 'tto':
+            # Can attach to stem or modified forms
+            # Conservative: assume attaches to stem
+            if not base.endswith(('a', 'i', 'u', 'ā', 'ī', 'ū')):
+                return base + 'a'  # Add default vowel
+            return base
+        
+        # For single-char suffixes
+        elif suffix == 'M':
+            # Accusative: stem + M
+            return base
+        
+        elif suffix == 'o':
+            # Nominative masculine: no_vowel + o → stem + a
+            return base + 'a'
+        
+        elif suffix == 'e':
+            # Could be locative or nominative plural
+            # e comes from a → e transformation
+            return base + 'a'
+        
+        return base
+    
+    def _is_valid_stem(self, stem):
+        """
+        Validate that reconstructed stem is phonologically valid
+        """
+        if not stem:
+            return False
+        
+        # Must end in vowel
+        if stem[-1] not in 'aiuāīū':
+            return False
+        
+        # Must have at least one consonant
+        if not any(c in 'kgcjTDNtdnpbmyrlvszh' for c in stem):
+            return False
+        
+        # Check against forbidden Prakrit sounds
+        forbidden = ['R', 'RR', 'lR', 'lRR', 'H', 'S']
+        for char in forbidden:
+            if char in stem:
+                return False
+        
+        return True
+    
+    def _score_analyses(self, analyses):
+        """
+        Assign confidence scores to each analysis
+        """
+        for analysis in analyses:
+            score = 0.0
+            
+            # Factor 1: Suffix priority (longer = more confident)
+            suffix_len = len(analysis['suffix'])
+            score += suffix_len * 0.15
+            
+            # Factor 2: Stem ending matches gender expectation
+            stem = analysis['stem']
+            gender = analysis['gender']
+            
+            if gender == 'masculine':
+                if stem.endswith(('a', 'i', 'u')):
+                    score += 0.25
+            elif gender == 'feminine':
+                if stem.endswith(('ā', 'ī', 'ū', 'a', 'i')):
+                    score += 0.25
+            elif gender == 'neuter':
+                if stem.endswith(('a', 'i', 'u')):
+                    score += 0.25
+            
+            # Factor 3: Case-number-suffix alignment
+            # Some suffixes are unambiguous
+            unambiguous_suffixes = ['ssa', 'mmi', 'hinto', 'sunto', 'hi', 'hiM']
+            if analysis['suffix'] in unambiguous_suffixes:
+                score += 0.3
+            
+            # Factor 4: Frequency of stem pattern
+            # (Would need corpus data, using heuristics)
+            if stem.endswith('a'):
+                score += 0.1  # a-stems most common
+            
+            # Factor 5: Phonological naturalness
+            if self._is_euphonic(analysis['base'], analysis['suffix']):
+                score += 0.2
+            
+            analysis['confidence'] = min(score, 1.0)
+        
+        return analyses
+    
+    def _is_euphonic(self, base, suffix):
+        """
+        Check if base + suffix follows Prakrit euphonic rules
+        """
+        if not base or not suffix:
+            return True
+        
+        # Check for natural transitions
+        last_char = base[-1]
+        first_char = suffix[0]
+        
+        # Vowel + h is natural (for hi, hinto)
+        if last_char in 'aeiouāīū' and first_char == 'h':
+            return True
+        
+        # Vowel + s is natural (for ssa, su, sunto)
+        if last_char in 'aeiouāīū' and first_char == 's':
+            return True
+        
+        # Vowel + N is natural (for Na, NaM, No)
+        if last_char in 'aeiouāīū' and first_char == 'N':
+            return True
+        
+        # Vowel + t is natural (for tto)
+        if last_char in 'aeiouāīū' and first_char == 't':
+            return True
+        
+        # Vowel + m is natural (for mmi, M)
+        if last_char in 'aeiouāīū' and first_char == 'm':
+            return True
+        
+        return True
+    
+    def _disambiguate(self, analyses):
+        """
+        Final disambiguation: select best parse(s)
+        """
+        if not analyses:
+            return []
+        
+        # Group by stem
+        by_stem = {}
+        for analysis in analyses:
+            stem = analysis['stem']
+            if stem not in by_stem:
+                by_stem[stem] = []
+            by_stem[stem].append(analysis)
+        
+        # For each stem, keep analyses above threshold
+        threshold = 0.6
+        final = []
+        
+        for stem, stem_analyses in by_stem.items():
+            # Sort by confidence
+            stem_analyses.sort(key=lambda x: x['confidence'], reverse=True)
+            
+            # Keep top analysis and any others within 0.1 confidence
+            top_confidence = stem_analyses[0]['confidence']
+            
+            for analysis in stem_analyses:
+                if analysis['confidence'] >= threshold and \
+                   (top_confidence - analysis['confidence']) < 0.15:
+                    final.append(analysis)
+        
+        return sorted(final, key=lambda x: x['confidence'], reverse=True)
+```
+
+## Testing Examples
+
+```python
+# Test cases
+parser = PrakritStemParser()
+
+# Example 1: devehinto
+result = parser.parse_word('devehinto')
+"""
+Expected output:
+[
+    {
+        'stem': 'deva',
+        'suffix': 'hinto',
+        'case': 'ablative',
+        'number': 'singular/plural',
+        'gender': 'masculine',
+        'confidence': 0.92
+    }
+]
+
+NOT:
+    {
+        'stem': 'devehint',  ← BLOCKED
+        'suffix': 'o',
+        'case': 'nominative',
+        ...
+    }
+"""
+
+# Example 2: purisāhiM
+result = parser.parse_word('purisāhiM')
+"""
+Expected:
+[
+    {
+        'stem': 'purisa',
+        'suffix': 'hiM',
+        'case': 'instrumental',
+        'number': 'plural',
+        'gender': 'masculine',
+        'confidence': 0.88
+    }
+]
+"""
+
+# Example 3: aggissa
+result = parser.parse_word('aggissa')
+"""
+Expected:
+[
+    {
+        'stem': 'aggi',
+        'suffix': 'ssa',
+        'case': 'dative',
+        'number': 'singular',
+        'gender': 'masculine',
+        'confidence': 0.85
+    },
+    {
+        'stem': 'aggi',
+        'suffix': 'ssa',
+        'case': 'genitive',
+        'number': 'singular',
+        'gender': 'masculine',
+        'confidence': 0.85
+    }
+]
+"""
+
+# Example 4: kaññāNo (ambiguous)
+result = parser.parse_word('kaññāNo')
+"""
+Expected (multiple interpretations):
+[
+    {
+        'stem': 'kaññā',
+        'suffix': 'No',
+        'case': 'dative',
+        'number': 'singular',
+        'gender': 'feminine',
+        'confidence': 0.65
+    },
+    {
+        'stem': 'kaññā',
+        'suffix': 'No',
+        'case': 'genitive',
+        'number': 'singular',
+        'gender': 'feminine',
+        'confidence': 0.65
+    }
+]
+
+Note: 'No' after ā is unusual, lower confidence
+"""
+```
+
+## Summary of Key Improvements
+
+1. **Greedy Longest Match**: Always try longest suffixes first
+2. **Blocking Rules**: Long suffixes prevent shorter interpretations
+3. **Context Validation**: Enforce vowel requirements before suffixes
+4. **Stem Reconstruction Logic**: Different rules for each suffix type
+5. **Confidence Scoring**: Multi-factor scoring system
+6. **Disambiguation**: Return only high-confidence parses
+
+This prevents `devehinto` from being misparsed as `devehint + o` and ensures accurate stem extraction.

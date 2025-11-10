@@ -73,3 +73,12 @@ Desktop.ini
 # Env files
 .env
 .env.*
+
+# Database files (auto-downloaded from Dropbox)
+*.db
+prakrit-dict.db
+verb_forms.db
+noun_forms.db
+
+# User feedback data
+user_feedback.json

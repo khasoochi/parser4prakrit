@@ -1,0 +1,358 @@
+# Comprehensive Analysis of Prakrit Declension Generator
+
+## Overview
+This code generates **noun declension tables** for Prakrit (Middle Indo-Aryan language) words across three genders: masculine, feminine, and neuter. It takes a base word (stem) and produces all grammatical case forms in both singular and plural numbers.
+
+## Core Parsing Logic for Reverse Engineering
+
+### 1. **Input Processing**
+- Accepts words in **Devanagari** or **Harvard-Kyoto (HK)** transliteration
+- Converts everything to HK internally for processing
+- Validates against forbidden Prakrit characters (R, RR, ṝ, ṝṝ, visarga/H, ś/S)
+- Validates consonant clusters against allowed Prakrit conjuncts
+
+### 2. **Stem Analysis Pattern Recognition**
+
+The parser must identify:
+- **Final vowel** of the stem (a, ā, i, ī, u, ū)
+- **Gender** (masculine/neuter/feminine)
+- **Stem type** based on ending
+
+### 3. **NEUTER Declension Logic**
+
+**Key Pattern**: Neuter words have identical nominative (1st case) and accusative (2nd case) forms.
+
+```
+Base transformations:
+- Remove final vowel → no_vowel base
+- a → ā for plurals
+- i → ī for plurals  
+- u → ū for plurals
+
+Case 1 & 2 (Nom/Acc):
+  Singular: stem + M (e.g., phalaM)
+  Plural: [base + iM, base + i~, base + Ni] (e.g., phalāiM, phalāi~, phalāNi)
+
+Cases 3-7: Follows MASCULINE paradigm
+```
+
+**Parser Strategy**: If you encounter forms ending in -M (singular) and -iM/-i~/-Ni (plural) in nominative/accusative positions, it's likely neuter.
+
+### 4. **FEMININE Declension Logic**
+
+**Stem Processing**:
+```
+Ending 'a' or 'ā' → base_long (ā), base_short (a)
+Ending 'i' or 'ī' → base_long (ī), base_short (i)
+Ending 'u' or 'ū' → base_long (ū), base_short (u)
+Special: ī-stems have extra_a flag (adds word+ā form)
+```
+
+**Case Forms Pattern**:
+```
+Case 1 (Nominative):
+  Sg: base_long / base_long+u / base_long+o
+  Pl: base_long / base_long+u / base_long+o
+
+Case 2 (Accusative):
+  Sg: base_short + M
+  Pl: [same as nom. plural]
+
+Case 3 (Instrumental):
+  Sg: base_long + [a, i, e] (or [a, ā, i, e] for non-ā stems)
+  Pl: base_long + [hi, hiM, hi~]
+
+Case 4 (Dative):
+  Sg: base_long + [a, i, e] (or [a, ā, i, e])
+  Pl: base_long + [Na, NaM]
+
+Case 5 (Ablative):
+  Sg: base_short + tto, base_long + [a, i, e, o, u, hinto]
+  Pl: base_short + tto, base_long + [o, u, hinto, sunto]
+
+Case 6 (Genitive):
+  Sg: base_long + [a, i, e] (or [a, ā, i, e])
+  Pl: base_long + [Na, NaM]
+
+Case 7 (Locative):
+  Sg: base_long + [a, i, e] (or [a, ā, i, e])
+  Pl: base_long + [su, suM]
+```
+
+**Parser Strategy**: 
+- Look for -hi/-hiM (instrumental plural) → feminine
+- Look for -tto (ablative) with long vowel forms → feminine
+- Nominative singular with -u/-o variants → feminine
+
+### 5. **MASCULINE Declension Logic**
+
+**Stem Processing**:
+```
+no_vowel = stem without final vowel
+a_to_ā = stem with 'a' → 'ā'
+a_to_e = stem with 'a' → 'e'
+i_u_to_īū = i-stems → ī, u-stems → ū
+```
+
+**Case Forms Pattern**:
+
+```
+Case 1 (Nominative):
+  a-stems:
+    Sg: no_vowel + o (e.g., puriso)
+    Pl: a_to_ā (e.g., purisā), a_to_e (purise)
+  
+  i-stems:
+    Sg: ī (e.g., aggiī becomes aggī)
+    Pl: [no_vowel+a_u, no_vowel+ao, ī, word+No]
+  
+  u-stems:
+    Sg: ū (e.g., bhikkhuū becomes bhikkhū)
+    Pl: [no_vowel+au, no_vowel+ao, ū, word+No, no_vowel+avo]
+
+Case 2 (Accusative):
+  a-stems:
+    Sg: word + M (purisaM)
+    Pl: a_to_ā, a_to_e (purisā, purise)
+  
+  i/u-stems:
+    Sg: word + M
+    Pl: ī/ū, word+No
+
+Case 3 (Instrumental):
+  a-stems:
+    Sg: a_to_e + [Na, NaM] (puriseNa, puriseNaM)
+    Pl: a_to_e + [hi, hiM, hi~]
+  
+  i/u-stems:
+    Sg: word + NA (aggīNA)
+    Pl: ī/ū + [hi, hiM, hi~]
+
+Case 4 (Dative):
+  a-stems:
+    Sg: word + ssa (purisassa)
+    Pl: a_to_ā + [Na, NaM] (purisāNa, purisāNaM)
+  
+  i/u-stems:
+    Sg: word + [ssa, No]
+    Pl: ī/ū + [Na, NaM]
+
+Case 5 (Ablative):
+  a-stems:
+    Sg: word+tto, a_to_ā+[o, u, hi, hinto]
+    Pl: word+tto, a_to_ā/e+[o, u, hi, hinto, sunto]
+  
+  i/u-stems:
+    Sg: word+tto, ī/ū+[o, u, hinto], word+No
+    Pl: word+tto, ī/ū+[o, u, hinto, sunto]
+
+Case 6 (Genitive):
+  a-stems:
+    Sg: word + ssa
+    Pl: a_to_ā + [Na, NaM]
+  
+  i/u-stems:
+    Sg: word + [ssa, No]
+    Pl: ī/ū + [Na, NaM]
+
+Case 7 (Locative):
+  a-stems:
+    Sg: no_vowel+e, word+mmi (purise, purisammi)
+    Pl: a_to_e + [su, suM]
+  
+  i/u-stems:
+    Sg: word + mmi
+    Pl: ī/ū + [su, suM]
+```
+
+## Reverse Engineering Strategy: Building a Parser
+
+### Step 1: Form Recognition Patterns
+
+Create a signature database:
+
+```python
+MASCULINE_SIGNATURES = {
+    'nominative_sg_a': r'(\w+)o$',  # puriso
+    'nominative_pl_a': r'(\w+)[āe]$',  # purisā, purise
+    'accusative_sg': r'(\w+)M$',  # purisaM
+    'instrumental_sg_a': r'(\w+)e(Na|NaM)$',  # puriseNa
+    'instrumental_sg_iu': r'(\w+)[īū]NA$',  # aggīNA
+    'dative_sg': r'(\w+)ssa$',  # purisassa
+    'locative_sg_a': r'(\w+)(e|ammi)$',  # purise, purisammi
+    'locative_sg_iu': r'(\w+)mmi$',  # aggimmi
+    'ablative': r'(\w+)tto$',  # purisatto
+}
+
+FEMININE_SIGNATURES = {
+    'instrumental_pl': r'(\w+)[āīū]hi[Mṃ~]?$',  # kaññāhi
+    'ablative_sg': r'(\w+)[aāiīuū]tto$',  # kaññatto
+    'nominative_sg': r'(\w+)[āīū][uo]?$',  # kaññā, kaññāu
+}
+
+NEUTER_SIGNATURES = {
+    'nominative_sg': r'(\w+)M$',  # phalaM
+    'nominative_pl': r'(\w+)[āīū](iM|i~|Ni)$',  # phalāiM
+}
+```
+
+### Step 2: Stem Extraction Algorithm
+
+```python
+def extract_stem(inflected_form, case, number, gender):
+    """
+    Reverse the inflection process
+    """
+    if gender == 'neuter':
+        if case in ['nominative', 'accusative']:
+            if number == 'singular':
+                # Remove -M
+                return inflected_form[:-1]
+            else:
+                # Remove -iM, -i~, or -Ni, convert long vowel to short
+                if inflected_form.endswith('iM'):
+                    stem = inflected_form[:-2]
+                elif inflected_form.endswith('i~'):
+                    stem = inflected_form[:-2]
+                elif inflected_form.endswith('Ni'):
+                    stem = inflected_form[:-2]
+                # Convert ā→a, ī→i, ū→u
+                return convert_long_to_short(stem)
+    
+    elif gender == 'masculine':
+        if case == 'nominative' and number == 'singular':
+            if inflected_form.endswith('o'):
+                # a-stem: add 'a'
+                return inflected_form[:-1] + 'a'
+            elif is_long_vowel(inflected_form[-1]):
+                # i/u-stem: convert long to short
+                return inflected_form[:-1] + short_vowel(inflected_form[-1])
+        
+        if inflected_form.endswith('ssa'):
+            # Dative/genitive singular - return base
+            return inflected_form[:-3] + 'a'  # for a-stems
+        
+        if inflected_form.endswith('NA'):
+            # Instrumental singular i/u-stem
+            return inflected_form[:-2] + 'i'  # or 'u'
+    
+    elif gender == 'feminine':
+        if inflected_form.endswith('hi') or inflected_form.endswith('hiM'):
+            # Instrumental plural - extract base_long
+            suffix_len = 2 if inflected_form.endswith('hi') else 3
+            base_long = inflected_form[:-suffix_len]
+            # Convert to base form (short vowel)
+            return convert_long_to_short(base_long)
+    
+    return None
+```
+
+### Step 3: Multi-Stage Parsing Pipeline
+
+```python
+class PrakritParser:
+    def parse(self, word):
+        """
+        Multi-stage parsing pipeline
+        """
+        # Stage 1: Character validation
+        if not self.validate_prakrit(word):
+            return None
+        
+        # Stage 2: Morphological analysis
+        possible_analyses = []
+        
+        # Try each gender hypothesis
+        for gender in ['masculine', 'feminine', 'neuter']:
+            for case in CASES:
+                for number in ['singular', 'plural']:
+                    stem = self.extract_stem(word, case, number, gender)
+                    if stem and self.validate_stem(stem):
+                        confidence = self.calculate_confidence(word, stem, case, number, gender)
+                        possible_analyses.append({
+                            'stem': stem,
+                            'case': case,
+                            'number': number,
+                            'gender': gender,
+                            'confidence': confidence
+                        })
+        
+        # Stage 3: Disambiguation
+        return self.disambiguate(possible_analyses)
+    
+    def calculate_confidence(self, word, stem, case, number, gender):
+        """
+        Score based on:
+        - Frequency of the affix pattern
+        - Phonological naturalness
+        - Stem ending compatibility
+        """
+        score = 0.0
+        
+        # Check if stem ending matches gender expectations
+        if gender == 'masculine' and stem.endswith(('a', 'i', 'u')):
+            score += 0.3
+        if gender == 'feminine' and stem.endswith(('ā', 'ī', 'ū', 'a', 'i', 'u')):
+            score += 0.3
+        if gender == 'neuter' and stem.endswith(('a', 'i', 'u')):
+            score += 0.3
+        
+        # Check affix frequency (empirically determined)
+        affix = word[len(stem):]
+        score += AFFIX_FREQUENCY.get((case, number, gender, affix), 0.0)
+        
+        # Phonological naturalness
+        if self.is_phonologically_natural(stem, affix):
+            score += 0.2
+        
+        return score
+```
+
+### Step 4: Key Discriminators
+
+**To distinguish gender from an inflected form:**
+
+1. **Neuter indicators**:
+   - Nom/Acc sg ending in -M
+   - Nom/Acc pl ending in -āiM, -āi~, -āNi (or ī/ū variants)
+
+2. **Feminine indicators**:
+   - Instrumental plural: -āhi, -īhi, -ūhi
+   - Ablative singular: -atto with long vowel base
+   - Nominative singular: -ā, -ī, -ū with optional -u/-o
+
+3. **Masculine indicators**:
+   - Nominative singular: -o (a-stems), -ī/-ū (i/u-stems)
+   - Instrumental singular: -eNa (a-stems), -īNA/-ūNA (i/u-stems)
+   - Locative singular: -ammi, -immi, -ummi
+
+### Step 5: Ambiguity Resolution
+
+Some forms are ambiguous:
+- `-M` could be masc/neut accusative sg OR neut nominative sg
+- `-ā` could be fem nominative OR masc nominative plural
+
+**Resolution strategies**:
+1. **Context-based**: Use surrounding words if available
+2. **Frequency-based**: Prefer more common interpretations
+3. **Return multiple parses**: Ranked by confidence
+
+## Complete Parsing Example
+
+**Input**: `purisāNaM`
+
+```python
+# Step 1: Try each gender
+# Masculine hypothesis:
+#   - Ends in āNaM → likely genitive/dative plural
+#   - Remove āNaM → puris → add 'a' → purisa (a-stem)
+#   - Confidence: HIGH (matches a-stem genitive plural pattern)
+
+# Feminine hypothesis:
+#   - Could be genitive plural of purisā
+#   - Confidence: LOW (less common)
+
+# Result: purisa (masculine, genitive/dative plural)
+```
+
+This approach allows you to build a comprehensive parser that can reverse-engineer any Prakrit inflected form back to its stem, gender, case, and number.

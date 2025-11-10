@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "app.py",
+      "src": "unified_parser.py",
       "use": "@vercel/python"
     },
     {
@@ -21,7 +21,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "app.py"
+      "dest": "unified_parser.py"
     }
   ],
   "env": {
