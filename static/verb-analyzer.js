@@ -90,7 +90,7 @@ function displayAnalysis(results) {
     // Store results globally for feedback
     window.currentResults = results;
 
-    // Main analysis display for best match
+    // Main analysis display for best match with thumbs up/down
     const bestMatch = results[0];
     const mainAnalysisHtml = `
         <div class="analysis-item">
@@ -102,15 +102,31 @@ function displayAnalysis(results) {
             <br><strong>Tense:</strong> ${bestMatch.analysis.tense}
             <br><strong>Person:</strong> ${bestMatch.analysis.person}
             <br><strong>Number:</strong> ${bestMatch.analysis.number}
+            <br><strong>Root:</strong> ${bestMatch.potential_root}
             <br><strong>Confidence:</strong> <span class="confidence-${getConfidenceClass(bestMatch.confidence)}">${(bestMatch.confidence * 100).toFixed(1)}%</span>
         </div>
-        <div class="analysis-item">
-            <strong>Alternative Interpretations:</strong> ${results.length - 1} other possibilities found
+        <div class="feedback-quick" style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+            <strong style="display: block; margin-bottom: 10px;">Is this analysis correct?</strong>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button class="thumbs-btn thumbs-up" onclick="submitQuickFeedback(0, true)" title="Yes, this is correct">
+                    👍 Yes, correct
+                </button>
+                <button class="thumbs-btn thumbs-down" onclick="submitQuickFeedback(0, false)" title="No, this is wrong">
+                    👎 No, wrong
+                </button>
+                <button class="report-btn" onclick="reportProblem()" title="All analyses are wrong or there's a problem">
+                    🚩 Report issue
+                </button>
+            </div>
+            <p style="font-size: 0.85em; margin-top: 8px; color: #666;">
+                If wrong, check alternatives below and mark the correct one
+            </p>
         </div>
-        <div class="feedback-prompt" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
-            <strong>Is this analysis correct?</strong>
-            <p style="font-size: 0.9em; margin: 5px 0;">Help us improve by marking the correct analysis below</p>
+        ${results.length > 1 ? `
+        <div class="analysis-item" style="margin-top: 15px;">
+            <strong>Alternative Interpretations:</strong> ${results.length - 1} other possibilities found below
         </div>
+        ` : ''}
     `;
     document.getElementById('main-analysis').innerHTML = mainAnalysisHtml;
 

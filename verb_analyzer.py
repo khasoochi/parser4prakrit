@@ -533,8 +533,11 @@ def submit_feedback():
         verb_form = data.get('verb_form')
         selected_index = data.get('selected_index')
         all_analyses = data.get('all_analyses')
+        feedback_type = data.get('feedback_type', 'correct_analysis')  # thumbs_up, thumbs_down, correct_analysis, report_problem
+        is_correct = data.get('is_correct')
+        problem_description = data.get('problem_description')
 
-        if not all([verb_form, selected_index is not None, all_analyses]):
+        if not verb_form or all_analyses is None:
             return jsonify({"error": "Missing required fields"}), 400
 
         if DATABASE_AVAILABLE and db:
@@ -542,27 +545,47 @@ def submit_feedback():
             user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
             user_agent = request.headers.get('User-Agent')
 
-            selected_analysis = all_analyses[selected_index] if selected_index < len(all_analyses) else None
-
-            if selected_analysis:
-                success = db.add_feedback(
-                    verb_form=verb_form,
-                    selected_analysis=selected_analysis,
-                    all_analyses=all_analyses,
-                    user_ip=user_ip,
-                    user_agent=user_agent
-                )
-
-                if success:
-                    logger.info(f"Feedback recorded: '{verb_form}' - analysis {selected_index}")
-                    return jsonify({
-                        "status": "success",
-                        "message": "Thank you for your feedback!"
-                    })
-                else:
-                    return jsonify({"error": "Failed to record feedback"}), 500
+            # Prepare feedback data based on type
+            if feedback_type == 'report_problem':
+                selected_analysis = {
+                    'type': 'problem_report',
+                    'description': problem_description
+                }
+            elif selected_index is not None and selected_index >= 0 and selected_index < len(all_analyses):
+                selected_analysis = all_analyses[selected_index].copy()
+                selected_analysis['feedback_type'] = feedback_type
+                if feedback_type in ['thumbs_up', 'thumbs_down']:
+                    selected_analysis['is_correct'] = is_correct
             else:
                 return jsonify({"error": "Invalid analysis index"}), 400
+
+            success = db.add_feedback(
+                verb_form=verb_form,
+                selected_analysis=selected_analysis,
+                all_analyses=all_analyses,
+                user_ip=user_ip,
+                user_agent=user_agent
+            )
+
+            if success:
+                logger.info(f"Feedback recorded: '{verb_form}' - type: {feedback_type}, index: {selected_index}")
+
+                # Customized response messages
+                if feedback_type == 'thumbs_up':
+                    message = "Great! Thanks for confirming!"
+                elif feedback_type == 'thumbs_down':
+                    message = "Thanks! Please mark the correct analysis in the alternatives."
+                elif feedback_type == 'report_problem':
+                    message = "Thank you for reporting this issue!"
+                else:
+                    message = "Thank you for your feedback!"
+
+                return jsonify({
+                    "status": "success",
+                    "message": message
+                })
+            else:
+                return jsonify({"error": "Failed to record feedback"}), 500
         else:
             return jsonify({"error": "Feedback system not available"}), 503
 

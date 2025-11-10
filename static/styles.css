@@ -360,3 +360,78 @@ footer a:hover {
     border-left: 4px solid var(--success-color);
     background-color: rgba(39, 174, 96, 0.05);
 }
+
+/* Quick Feedback Buttons */
+.thumbs-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.thumbs-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+}
+
+.thumbs-up {
+    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+}
+
+.thumbs-up:hover:not(:disabled) {
+    box-shadow: 0 4px 15px rgba(0, 184, 148, 0.5);
+}
+
+.thumbs-down {
+    background: linear-gradient(135deg, #e17055 0%, #d63031 100%);
+}
+
+.thumbs-down:hover:not(:disabled) {
+    box-shadow: 0 4px 15px rgba(214, 48, 49, 0.5);
+}
+
+.report-btn {
+    background: linear-gradient(135deg, #fdcb6e 0%, #e17055 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1em;
+    transition: all 0.3s ease;
+}
+
+.report-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(253, 203, 110, 0.5);
+}
+
+.thumbs-btn:disabled, .report-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.feedback-quick {
+    border-left: 4px solid #667eea;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
