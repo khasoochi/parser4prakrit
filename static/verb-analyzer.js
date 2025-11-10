@@ -254,3 +254,100 @@ function exportJSON() {
     
     showToast('Analysis exported as JSON');
 }
+
+async function submitQuickFeedback(index, isCorrect) {
+    if (!window.currentResults) {
+        showToast('No analysis data available', 'error');
+        return;
+    }
+
+    const verbForm = window.currentResults[0].original_form;
+
+    try {
+        const response = await fetch('/feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                verb_form: verbForm,
+                selected_index: index,
+                all_analyses: window.currentResults,
+                feedback_type: isCorrect ? 'thumbs_up' : 'thumbs_down',
+                is_correct: isCorrect
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            if (isCorrect) {
+                showToast('👍 Thanks! Glad we got it right!', 'success');
+                document.querySelectorAll('.thumbs-btn').forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                });
+                document.querySelector('.thumbs-up').style.background = '#28a745';
+            } else {
+                showToast('👎 Thanks! Please mark the correct one below.', 'info', 4000);
+                document.querySelectorAll('.thumbs-btn').forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                });
+                document.querySelector('.thumbs-down').style.background = '#e74c3c';
+                setTimeout(() => {
+                    document.querySelector('.tab-button[data-tab="details"]').click();
+                }, 500);
+            }
+        } else {
+            showToast(data.error || 'Failed to submit feedback', 'error');
+        }
+    } catch (error) {
+        console.error('Quick feedback error:', error);
+        showToast('Error submitting feedback', 'error');
+    }
+}
+
+async function reportProblem() {
+    const problem = prompt('Please describe the issue:\n(e.g., "All analyses are wrong", "Missing the correct form", "Technical error")');
+
+    if (!problem || problem.trim() === '') {
+        return;
+    }
+
+    if (!window.currentResults) {
+        showToast('No analysis data available', 'error');
+        return;
+    }
+
+    const verbForm = window.currentResults[0].original_form;
+
+    try {
+        const response = await fetch('/feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                verb_form: verbForm,
+                selected_index: -1,
+                all_analyses: window.currentResults,
+                feedback_type: 'report_problem',
+                problem_description: problem
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('🚩 Thank you for reporting this issue!', 'success');
+            document.querySelector('.report-btn').disabled = true;
+            document.querySelector('.report-btn').style.opacity = '0.5';
+        } else {
+            showToast(data.error || 'Failed to submit report', 'error');
+        }
+    } catch (error) {
+        console.error('Report error:', error);
+        showToast('Error submitting report', 'error');
+    }
+}
