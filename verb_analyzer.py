@@ -47,6 +47,17 @@ except ImportError:
     InputValidator = None
     validate_and_sanitize = None
 
+try:
+    from database import get_database
+    DATABASE_AVAILABLE = True
+    db = get_database()
+    if db:
+        logger.info("Database module loaded successfully")
+except ImportError:
+    logger.warning("database module not available - no SQL validation")
+    DATABASE_AVAILABLE = False
+    db = None
+
 app = Flask(__name__)
 
 # Load Prakrit verb roots from verbs.json
@@ -304,10 +315,41 @@ def analyze_endings(verb_form: str) -> Optional[List[Dict[str, Any]]]:
 
     # Combine all endings
     all_endings = {**present_endings, **future_endings, **past_endings}
-    
+
     possible_matches = []
     vowels = set('aeiouAEIOU')
-    # First, check if verb_form is attested in ALL_VERB_FORMS
+    consonants = set('kgcjTDtdpbmnNrlvySshRL')  # Prakrit consonants
+
+    # First, check if verb_form is in SQL database (highest confidence)
+    db_entry = None
+    if DATABASE_AVAILABLE and db:
+        try:
+            db_entry = db.lookup_verb(verb_form)
+            if db_entry:
+                logger.info(f"Found '{verb_form}' in database with root '{db_entry['root']}'")
+        except Exception as e:
+            logger.warning(f"Database lookup error: {e}")
+
+    # If found in database, create high-confidence match
+    if db_entry:
+        for ending, info in all_endings.items():
+            if verb_form.endswith(ending):
+                info_copy = info.copy()
+                info_copy['root'] = db_entry['root']
+                match = {
+                    'analysis': info_copy,
+                    'potential_root': db_entry['root'],
+                    'ending': ending,
+                    'prefix': prefix,
+                    'sanskrit_prefix': sanskrit_prefix,
+                    'confidence': 1.0,  # Maximum confidence for database entries
+                    'notes': [f"✓ Verified form from database (Source: {db_entry.get('source', 'Database')})"]
+                }
+                if db_entry.get('dialect'):
+                    match['notes'].append(f"Dialect: {db_entry['dialect']}")
+                possible_matches.append(match)
+
+    # Next, check if verb_form is attested in ALL_VERB_FORMS
     attested_root = None
     for root, forms in ALL_VERB_FORMS.items():
         if verb_form in forms:
@@ -345,9 +387,21 @@ def analyze_endings(verb_form: str) -> Optional[List[Dict[str, Any]]]:
         for test_ending in endings_to_check:
             if verb_form.endswith(test_ending):
                 potential_root = verb_form[:-len(test_ending)]
-                # Filter: root should not end with 'a'
+
+                # IMPORTANT FILTER: Prakrit verb stems should NOT end in consonants
+                # Verb roots can be consonant-ending, but stems must end in vowels
+                # Exception: If the potential_root is in VERB_ROOTS (a known root), allow it
+                if len(potential_root) > 0 and potential_root[-1] in consonants:
+                    # Check if it's a known root (roots can end in consonants)
+                    if potential_root not in VERB_ROOTS:
+                        # Not a known root, skip this analysis
+                        continue
+
+                # Filter: stem should not end with 'a' (typically)
+                # This is a softer filter - we reduce confidence rather than skip
                 if potential_root.endswith('a'):
                     continue
+
                 # Filter: 'i' ending must be preceded by a vowel
                 if ending == 'i' and (len(potential_root) == 0 or potential_root[-1] not in vowels):
                     continue
@@ -403,9 +457,16 @@ def analyze_endings(verb_form: str) -> Optional[List[Dict[str, Any]]]:
         for test_ending in endings_to_check:
             for i in range(1, min(4, len(verb_form))):
                 potential_root = verb_form[:-i]
-                # Filter: root should not end with 'a'
+
+                # IMPORTANT FILTER: Prakrit verb stems should NOT end in consonants
+                if len(potential_root) > 0 and potential_root[-1] in consonants:
+                    if potential_root not in VERB_ROOTS:
+                        continue
+
+                # Filter: stem should not end with 'a'
                 if potential_root.endswith('a'):
                     continue
+
                 # Filter: 'i' ending must be preceded by a vowel
                 if ending == 'i' and (len(potential_root) == 0 or potential_root[-1] not in vowels):
                     continue
@@ -463,6 +524,51 @@ def analyze_endings(verb_form: str) -> Optional[List[Dict[str, Any]]]:
 @app.route('/', methods=['GET'])
 def index():
     return render_template('analyzer.html')
+
+@app.route('/feedback', methods=['POST'])
+def submit_feedback():
+    """Endpoint for user feedback on analysis correctness."""
+    try:
+        data = request.get_json()
+        verb_form = data.get('verb_form')
+        selected_index = data.get('selected_index')
+        all_analyses = data.get('all_analyses')
+
+        if not all([verb_form, selected_index is not None, all_analyses]):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        if DATABASE_AVAILABLE and db:
+            # Get user info for analytics
+            user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            user_agent = request.headers.get('User-Agent')
+
+            selected_analysis = all_analyses[selected_index] if selected_index < len(all_analyses) else None
+
+            if selected_analysis:
+                success = db.add_feedback(
+                    verb_form=verb_form,
+                    selected_analysis=selected_analysis,
+                    all_analyses=all_analyses,
+                    user_ip=user_ip,
+                    user_agent=user_agent
+                )
+
+                if success:
+                    logger.info(f"Feedback recorded: '{verb_form}' - analysis {selected_index}")
+                    return jsonify({
+                        "status": "success",
+                        "message": "Thank you for your feedback!"
+                    })
+                else:
+                    return jsonify({"error": "Failed to record feedback"}), 500
+            else:
+                return jsonify({"error": "Invalid analysis index"}), 400
+        else:
+            return jsonify({"error": "Feedback system not available"}), 503
+
+    except Exception as e:
+        logger.error(f"Error submitting feedback: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/analyze', methods=['POST'])
 def analyze():

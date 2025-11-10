@@ -9,6 +9,11 @@
     --text-color: #333;
     --border-color: #ddd;
     --background-color: #f5f5f5;
+
+    /* Tab colors - updated for better distinction */
+    --tab-all-color: #6c5ce7;      /* Purple for "All" */
+    --tab-noun-color: #00b894;     /* Teal for "Noun" */
+    --tab-verb-color: #fd79a8;     /* Pink for "Verb" */
 }
 
 * {
@@ -309,4 +314,49 @@ footer a:hover {
     .possibility-item {
         padding: 0.8rem;
     }
+}
+
+/* Feedback Button Styles */
+.feedback-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    font-size: 0.9em;
+}
+
+.feedback-btn:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.feedback-btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.feedback-prompt {
+    border-left: 4px solid var(--info-color);
+}
+
+/* Possibility item enhancements */
+.possibility-item {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.possibility-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateX(4px);
+}
+
+.best-match {
+    border-left: 4px solid var(--success-color);
+    background-color: rgba(39, 174, 96, 0.05);
 }

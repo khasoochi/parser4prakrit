@@ -86,6 +86,10 @@ function displayAnalysis(results) {
         document.getElementById('detailed-analysis').innerHTML = '';
         return;
     }
+
+    // Store results globally for feedback
+    window.currentResults = results;
+
     // Main analysis display for best match
     const bestMatch = results[0];
     const mainAnalysisHtml = `
@@ -103,16 +107,25 @@ function displayAnalysis(results) {
         <div class="analysis-item">
             <strong>Alternative Interpretations:</strong> ${results.length - 1} other possibilities found
         </div>
+        <div class="feedback-prompt" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+            <strong>Is this analysis correct?</strong>
+            <p style="font-size: 0.9em; margin: 5px 0;">Help us improve by marking the correct analysis below</p>
+        </div>
     `;
     document.getElementById('main-analysis').innerHTML = mainAnalysisHtml;
 
     // Detailed analysis display with all possibilities
     let detailedAnalysisHtml = `
         <div class="analysis-item">
-            <strong>All Possible Analyses</strong>
+            <strong>All Possible Analyses - Select the Correct One</strong>
             ${results.map((possibility, index) => `
-                <div class="possibility-item ${index === 0 ? 'best-match' : ''}">
-                    <h4>Possibility ${index + 1} ${index === 0 ? '(Best Match)' : ''}</h4>
+                <div class="possibility-item ${index === 0 ? 'best-match' : ''}" data-index="${index}">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h4>Possibility ${index + 1} ${index === 0 ? '(Best Match)' : ''}</h4>
+                        <button class="feedback-btn" onclick="submitFeedback(${index})" title="Mark this as correct">
+                            ✓ This is correct
+                        </button>
+                    </div>
                     <p>Tense: ${possibility.analysis.tense}</p>
                     <p>Person: ${possibility.analysis.person}</p>
                     <p>Number: ${possibility.analysis.number}</p>
@@ -128,6 +141,49 @@ function displayAnalysis(results) {
         </div>
     `;
     document.getElementById('detailed-analysis').innerHTML = detailedAnalysisHtml;
+}
+
+async function submitFeedback(selectedIndex) {
+    if (!window.currentResults) {
+        showToast('No analysis data available', 'error');
+        return;
+    }
+
+    const verbForm = window.currentResults[0].original_form;
+
+    try {
+        const response = await fetch('/feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                verb_form: verbForm,
+                selected_index: selectedIndex,
+                all_analyses: window.currentResults
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            showToast(data.message || 'Thank you for your feedback!', 'success');
+            // Visually mark the selected analysis
+            document.querySelectorAll('.possibility-item').forEach((item, idx) => {
+                if (idx === selectedIndex) {
+                    item.style.border = '2px solid #28a745';
+                    item.querySelector('.feedback-btn').disabled = true;
+                    item.querySelector('.feedback-btn').textContent = '✓ Marked as correct';
+                    item.querySelector('.feedback-btn').style.background = '#28a745';
+                }
+            });
+        } else {
+            showToast(data.error || 'Failed to submit feedback', 'error');
+        }
+    } catch (error) {
+        console.error('Feedback error:', error);
+        showToast('Error submitting feedback', 'error');
+    }
 }
 
 function getConfidenceClass(confidence) {
