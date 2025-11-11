@@ -49,13 +49,10 @@ class PrakritUnifiedParser:
         self.load_dictionary()
 
     def ensure_databases(self):
-        """Ensure databases are available, download if missing"""
-        try:
-            from download_databases import download_if_missing
-            db_paths = download_if_missing()
-        except Exception as e:
-            # Silently continue if download fails
-            pass
+        """Legacy method - databases now loaded from Turso"""
+        # No longer needed - Turso is the primary data source
+        # Local SQLite files only used as fallback
+        pass
 
     def load_dictionary(self):
         """Load dictionary database if available"""
@@ -71,19 +68,45 @@ class PrakritUnifiedParser:
             pass
 
     def load_data(self):
-        """Load verb and noun data from SQLite databases or JSON files"""
-        # Try SQLite databases first, fall back to JSON
+        """Load verb and noun data from Turso database, with fallbacks"""
+        # Initialize Turso database connection
+        self.turso_db = None
+        try:
+            from turso_db import TursoDatabase
+            self.turso_db = TursoDatabase()
+            if self.turso_db.connect():
+                # Load from Turso
+                self.verb_roots = self.turso_db.load_verb_roots()
+                self.all_verb_forms = self.turso_db.load_verb_forms()
+                self.all_noun_forms = self.turso_db.load_noun_forms()
+                return
+        except Exception as e:
+            print(f"⚠ Turso database not available, trying local fallback: {e}")
+
+        # Fallback to local files
         self.verb_roots = self.load_verb_roots()
         self.all_verb_forms = self.load_verb_forms_db()
         self.all_noun_forms = self.load_noun_forms_db()
 
     def load_verb_roots(self):
-        """Load verb roots from verbs1.json"""
+        """Load verb roots from verbs1.json and filter out invalid single-letter consonants"""
         try:
             verbs1_path = os.path.join(os.path.dirname(__file__), 'verbs1.json')
             with open(verbs1_path, encoding='utf-8') as f:
                 verbs1_data = json.load(f)
-                return set(verbs1_data.values())
+                roots = set(verbs1_data.values())
+
+                # Filter out single-letter consonants (they can't be valid Prakrit roots)
+                # Only single-letter vowels are valid (A, I, U, a, i, u, e, o)
+                valid_single_letters = {'A', 'I', 'U', 'a', 'i', 'u', 'e', 'o', 'ā', 'ī', 'ū'}
+                filtered_roots = set()
+                for root in roots:
+                    if len(root) == 1 and root not in valid_single_letters:
+                        # Skip single-letter consonants like N, d, g, etc.
+                        continue
+                    filtered_roots.add(root)
+
+                return filtered_roots
         except Exception as e:
             print(f"Warning: Could not load verbs1.json: {e}")
             return set()
@@ -200,6 +223,7 @@ class PrakritUnifiedParser:
             })
 
             # Update suffix accuracy tracking
+            # Only track suffix correctness, not root correctness
             correct_suffix = correct_analysis.get('suffix') or correct_analysis.get('ending')
             if correct_suffix:
                 if correct_suffix not in self.feedback_data['suffix_accuracy']:
@@ -211,18 +235,24 @@ class PrakritUnifiedParser:
                 # Mark this suffix as correct
                 self.feedback_data['suffix_accuracy'][correct_suffix]['correct'] += 1
 
-                # Mark other suffixes in the analyses as incorrect
+                # Only mark OTHER suffixes as incorrect (not the same suffix with different root)
+                # Collect unique suffixes from incorrect analyses
+                incorrect_suffixes = set()
                 for analysis in all_analyses:
                     if analysis == correct_analysis:
                         continue
                     other_suffix = analysis.get('suffix') or analysis.get('ending')
-                    if other_suffix:
-                        if other_suffix not in self.feedback_data['suffix_accuracy']:
-                            self.feedback_data['suffix_accuracy'][other_suffix] = {
-                                'correct': 0,
-                                'incorrect': 0
-                            }
-                        self.feedback_data['suffix_accuracy'][other_suffix]['incorrect'] += 1
+                    if other_suffix and other_suffix != correct_suffix:
+                        incorrect_suffixes.add(other_suffix)
+
+                # Mark each unique incorrect suffix
+                for incorrect_suffix in incorrect_suffixes:
+                    if incorrect_suffix not in self.feedback_data['suffix_accuracy']:
+                        self.feedback_data['suffix_accuracy'][incorrect_suffix] = {
+                            'correct': 0,
+                            'incorrect': 0
+                        }
+                    self.feedback_data['suffix_accuracy'][incorrect_suffix]['incorrect'] += 1
 
             self.feedback_data['total_feedback'] += 1
 
@@ -647,7 +677,7 @@ class PrakritUnifiedParser:
 
     def check_attested_verb_form(self, form: str) -> Tuple[bool, Optional[str], Optional[Dict]]:
         """
-        Check if a verb form is attested in verb_forms.db
+        Check if a verb form is attested in Turso database or local cache
 
         Args:
             form: Verb form in HK transliteration
@@ -655,26 +685,32 @@ class PrakritUnifiedParser:
         Returns:
             Tuple of (is_attested, root, form_info)
         """
-        if not self.all_verb_forms:
-            return False, None, None
-
-        # Try the form and its anusvara variants
+        # Try anusvara variants
         variants = self.generate_anusvara_variants(form)
 
-        for variant in variants:
-            for root, forms in self.all_verb_forms.items():
-                if isinstance(forms, dict):
-                    if variant in forms:
-                        return True, root, forms[variant]
-                elif isinstance(forms, list):
-                    if variant in forms:
-                        return True, root, {}
+        # Try Turso database first (direct query is more efficient)
+        if self.turso_db and self.turso_db.connected:
+            for variant in variants:
+                is_found, root, info = self.turso_db.check_verb_form(variant)
+                if is_found:
+                    return True, root, info
+
+        # Fallback to in-memory cache
+        if self.all_verb_forms:
+            for variant in variants:
+                for root, forms in self.all_verb_forms.items():
+                    if isinstance(forms, dict):
+                        if variant in forms:
+                            return True, root, forms[variant]
+                    elif isinstance(forms, list):
+                        if variant in forms:
+                            return True, root, {}
 
         return False, None, None
 
     def check_attested_noun_form(self, form: str) -> Tuple[bool, Optional[str], Optional[Dict]]:
         """
-        Check if a noun form is attested in noun_forms.db
+        Check if a noun form is attested in Turso database or local cache
 
         Args:
             form: Noun form in HK transliteration
@@ -682,20 +718,26 @@ class PrakritUnifiedParser:
         Returns:
             Tuple of (is_attested, stem, form_info)
         """
-        if not self.all_noun_forms:
-            return False, None, None
-
-        # Try the form and its anusvara variants
+        # Try anusvara variants
         variants = self.generate_anusvara_variants(form)
 
-        for variant in variants:
-            for stem, forms in self.all_noun_forms.items():
-                if isinstance(forms, dict):
-                    if variant in forms:
-                        return True, stem, forms[variant]
-                elif isinstance(forms, list):
-                    if variant in forms:
-                        return True, stem, {}
+        # Try Turso database first (direct query is more efficient)
+        if self.turso_db and self.turso_db.connected:
+            for variant in variants:
+                is_found, stem, info = self.turso_db.check_noun_form(variant)
+                if is_found:
+                    return True, stem, info
+
+        # Fallback to in-memory cache
+        if self.all_noun_forms:
+            for variant in variants:
+                for stem, forms in self.all_noun_forms.items():
+                    if isinstance(forms, dict):
+                        if variant in forms:
+                            return True, stem, forms[variant]
+                    elif isinstance(forms, list):
+                        if variant in forms:
+                            return True, stem, {}
 
         return False, None, None
 
