@@ -212,6 +212,7 @@ class PrakritUnifiedParser:
             })
 
             # Update suffix accuracy tracking
+            # Only track suffix correctness, not root correctness
             correct_suffix = correct_analysis.get('suffix') or correct_analysis.get('ending')
             if correct_suffix:
                 if correct_suffix not in self.feedback_data['suffix_accuracy']:
@@ -223,18 +224,24 @@ class PrakritUnifiedParser:
                 # Mark this suffix as correct
                 self.feedback_data['suffix_accuracy'][correct_suffix]['correct'] += 1
 
-                # Mark other suffixes in the analyses as incorrect
+                # Only mark OTHER suffixes as incorrect (not the same suffix with different root)
+                # Collect unique suffixes from incorrect analyses
+                incorrect_suffixes = set()
                 for analysis in all_analyses:
                     if analysis == correct_analysis:
                         continue
                     other_suffix = analysis.get('suffix') or analysis.get('ending')
-                    if other_suffix:
-                        if other_suffix not in self.feedback_data['suffix_accuracy']:
-                            self.feedback_data['suffix_accuracy'][other_suffix] = {
-                                'correct': 0,
-                                'incorrect': 0
-                            }
-                        self.feedback_data['suffix_accuracy'][other_suffix]['incorrect'] += 1
+                    if other_suffix and other_suffix != correct_suffix:
+                        incorrect_suffixes.add(other_suffix)
+
+                # Mark each unique incorrect suffix
+                for incorrect_suffix in incorrect_suffixes:
+                    if incorrect_suffix not in self.feedback_data['suffix_accuracy']:
+                        self.feedback_data['suffix_accuracy'][incorrect_suffix] = {
+                            'correct': 0,
+                            'incorrect': 0
+                        }
+                    self.feedback_data['suffix_accuracy'][incorrect_suffix]['incorrect'] += 1
 
             self.feedback_data['total_feedback'] += 1
 
