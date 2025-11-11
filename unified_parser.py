@@ -71,6 +71,8 @@ class PrakritUnifiedParser:
         """Load verb and noun data from Turso database, with fallbacks"""
         # Initialize Turso database connection
         self.turso_db = None
+        self.data_source = "none"  # Track which source is actually used
+
         try:
             from turso_db import TursoDatabase
             self.turso_db = TursoDatabase()
@@ -79,7 +81,12 @@ class PrakritUnifiedParser:
                 self.verb_roots = self.turso_db.load_verb_roots()
                 self.all_verb_forms = self.turso_db.load_verb_forms()
                 self.all_noun_forms = self.turso_db.load_noun_forms()
-                return
+
+                # Check if data was actually loaded
+                if self.verb_roots and (self.all_verb_forms or self.all_noun_forms):
+                    self.data_source = "turso"
+                    print(f"📊 DATA SOURCE: Turso database (verb_roots: {len(self.verb_roots)}, verb_forms: {len(self.all_verb_forms)}, noun_forms: {len(self.all_noun_forms)})")
+                    return
         except Exception as e:
             print(f"⚠ Turso database not available, trying local fallback: {e}")
 
@@ -87,6 +94,11 @@ class PrakritUnifiedParser:
         self.verb_roots = self.load_verb_roots()
         self.all_verb_forms = self.load_verb_forms_db()
         self.all_noun_forms = self.load_noun_forms_db()
+
+        # Determine which fallback source worked
+        if self.verb_roots:
+            self.data_source = "local_json"
+            print(f"📊 DATA SOURCE: Local JSON files (verb_roots: {len(self.verb_roots)}, verb_forms: {len(self.all_verb_forms)}, noun_forms: {len(self.all_noun_forms)})")
 
     def load_verb_roots(self):
         """Load verb roots from verbs1.json and filter out invalid single-letter consonants"""
@@ -574,10 +586,16 @@ class PrakritUnifiedParser:
 
     def transliterate_to_hk(self, text: str) -> str:
         """Convert Devanagari to Harvard-Kyoto"""
-        if not HAS_AKSHARAMUKHA:
-            return text
         if self.detect_script(text) == 'Devanagari':
-            return aksh_transliterate.process('Devanagari', 'HK', text)
+            # Use built-in transliterator
+            try:
+                from devanagari_transliterator import devanagari_to_hk
+                return devanagari_to_hk(text)
+            except ImportError:
+                # Fallback to aksharamukha if available
+                if HAS_AKSHARAMUKHA:
+                    return aksh_transliterate.process('Devanagari', 'HK', text)
+                return text
         return text
 
     def transliterate_to_devanagari(self, text: str) -> str:
@@ -1062,6 +1080,9 @@ class PrakritUnifiedParser:
             if form_info and isinstance(form_info, dict):
                 analysis.update({
                     'tense': form_info.get('tense', 'unknown'),
+                    'voice': form_info.get('voice', 'active'),  # active/passive
+                    'mood': form_info.get('mood', 'indicative'),
+                    'dialect': form_info.get('dialect', 'standard'),
                     'person': form_info.get('person', 'unknown'),
                     'number': form_info.get('number', 'unknown')
                 })
@@ -1151,6 +1172,9 @@ class PrakritUnifiedParser:
                     'root': candidate['root'],
                     'ending': ending,
                     'tense': info.get('tense'),
+                    'voice': 'active',  # Default for ending-based analysis
+                    'mood': 'indicative',  # Default for ending-based analysis
+                    'dialect': 'standard',  # Default for ending-based analysis
                     'person': info.get('person'),
                     'number': info.get('number'),
                     'type': 'verb',
@@ -1248,6 +1272,7 @@ class PrakritUnifiedParser:
             'original_form': text,
             'hk_form': word_hk,
             'script': original_script,
+            'data_source': self.data_source,  # Show which database is being used
             'analyses': all_analyses[:15],  # Return top 15 analyses
             'total_found': len(all_analyses)
         }
