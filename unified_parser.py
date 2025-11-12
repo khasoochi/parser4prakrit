@@ -81,11 +81,12 @@ class PrakritUnifiedParser:
                 self.verb_roots = self.turso_db.load_verb_roots()
                 self.all_verb_forms = self.turso_db.load_verb_forms()
                 self.all_noun_forms = self.turso_db.load_noun_forms()
+                self.all_participle_forms = self.turso_db.load_participle_forms()
 
                 # Check if data was actually loaded
                 if self.verb_roots and (self.all_verb_forms or self.all_noun_forms):
                     self.data_source = "turso"
-                    print(f"📊 DATA SOURCE: Turso database (verb_roots: {len(self.verb_roots)}, verb_forms: {len(self.all_verb_forms)}, noun_forms: {len(self.all_noun_forms)})")
+                    print(f"📊 DATA SOURCE: Turso database (verb_roots: {len(self.verb_roots)}, verb_forms: {len(self.all_verb_forms)}, noun_forms: {len(self.all_noun_forms)}, participle_forms: {len(self.all_participle_forms)})")
                     return
         except Exception as e:
             print(f"⚠ Turso database not available, trying local fallback: {e}")
@@ -94,6 +95,7 @@ class PrakritUnifiedParser:
         self.verb_roots = self.load_verb_roots()
         self.all_verb_forms = self.load_verb_forms_db()
         self.all_noun_forms = self.load_noun_forms_db()
+        self.all_participle_forms = {}  # No local participle data yet
 
         # Determine which fallback source worked
         if self.verb_roots:
@@ -576,6 +578,56 @@ class PrakritUnifiedParser:
             # Short forms (single character - lowest priority)
             'i': {'person': 'third', 'number': 'singular', 'tense': 'present', 'confidence': 0.7, 'priority': 1},
             'e': {'person': 'third', 'number': 'singular', 'tense': 'present', 'confidence': 0.7, 'priority': 1},
+        }
+
+        # PARTICIPLE SUFFIXES
+        self.participle_suffixes = {
+            # Type 1: Absolutive/Gerund (8 suffixes) - "having done"
+            'ttA': {'type': 'absolutive', 'priority': 5, 'confidence': 0.95, 'vowel_insert': True},
+            'ettA': {'type': 'absolutive', 'priority': 5, 'confidence': 0.95, 'vowel_insert': False},
+            'ittA': {'type': 'absolutive', 'priority': 5, 'confidence': 0.95, 'vowel_insert': False},
+
+            'tUNa': {'type': 'absolutive', 'priority': 5, 'confidence': 0.90, 'vowel_insert': True},
+            'etUNa': {'type': 'absolutive', 'priority': 5, 'confidence': 0.90, 'vowel_insert': False},
+            'itUNa': {'type': 'absolutive', 'priority': 5, 'confidence': 0.90, 'vowel_insert': False},
+
+            'UNaM': {'type': 'absolutive', 'priority': 5, 'confidence': 0.85, 'vowel_insert': True},
+            'eUNaM': {'type': 'absolutive', 'priority': 5, 'confidence': 0.85, 'vowel_insert': False},
+            'iUNaM': {'type': 'absolutive', 'priority': 5, 'confidence': 0.85, 'vowel_insert': False},
+
+            'tuM': {'type': 'absolutive', 'priority': 4, 'confidence': 0.90, 'vowel_insert': True},
+            'etuM': {'type': 'absolutive', 'priority': 4, 'confidence': 0.90, 'vowel_insert': False},
+            'ituM': {'type': 'absolutive', 'priority': 4, 'confidence': 0.90, 'vowel_insert': False},
+
+            'uM': {'type': 'absolutive', 'priority': 3, 'confidence': 0.75, 'vowel_insert': True},
+            'euM': {'type': 'absolutive', 'priority': 3, 'confidence': 0.75, 'vowel_insert': False},
+            'iuM': {'type': 'absolutive', 'priority': 3, 'confidence': 0.75, 'vowel_insert': False},
+
+            'tUANa': {'type': 'absolutive', 'priority': 6, 'confidence': 0.85, 'vowel_insert': True},
+            'etUANa': {'type': 'absolutive', 'priority': 6, 'confidence': 0.85, 'vowel_insert': False},
+            'itUANa': {'type': 'absolutive', 'priority': 6, 'confidence': 0.85, 'vowel_insert': False},
+
+            'UANa': {'type': 'absolutive', 'priority': 5, 'confidence': 0.80, 'vowel_insert': True},
+            'eUANa': {'type': 'absolutive', 'priority': 5, 'confidence': 0.80, 'vowel_insert': False},
+            'iUANa': {'type': 'absolutive', 'priority': 5, 'confidence': 0.80, 'vowel_insert': False},
+
+            # Type 2: Purposive/Infinitive (same as tuM, uM above) - "in order to do"
+            # Already covered by tuM, uM
+
+            # Type 3: Present Participle (2 stems, then declined) - "doing"
+            # Base stems (will be declined as nouns)
+            'anta': {'type': 'present_participle', 'priority': 5, 'confidence': 0.85, 'declined': True, 'vowel_insert': 'a'},
+            'enta': {'type': 'present_participle', 'priority': 5, 'confidence': 0.85, 'declined': True, 'vowel_insert': False},
+            'inta': {'type': 'present_participle', 'priority': 5, 'confidence': 0.85, 'declined': True, 'vowel_insert': False},
+
+            'amANa': {'type': 'present_participle', 'priority': 6, 'confidence': 0.90, 'declined': True, 'vowel_insert': 'a'},
+            'emANa': {'type': 'present_participle', 'priority': 6, 'confidence': 0.90, 'declined': True, 'vowel_insert': False},
+            'imANa': {'type': 'present_participle', 'priority': 6, 'confidence': 0.90, 'declined': True, 'vowel_insert': False},
+
+            # Type 4: Past Passive Participle (1 suffix, then declined) - "done"
+            'ia': {'type': 'past_passive_participle', 'priority': 4, 'confidence': 0.90, 'declined': True, 'consonant_only': True},
+            'eia': {'type': 'past_passive_participle', 'priority': 4, 'confidence': 0.90, 'declined': True, 'consonant_only': True},
+            'iia': {'type': 'past_passive_participle', 'priority': 4, 'confidence': 0.90, 'declined': True, 'consonant_only': True},
         }
 
     def detect_script(self, text: str) -> str:
@@ -1191,6 +1243,95 @@ class PrakritUnifiedParser:
 
         return results
 
+    def analyze_as_participle(self, word_hk: str) -> List[Dict]:
+        """Analyze word as a Prakrit participle"""
+        results = []
+
+        # First check if form is attested in participle_forms database
+        if self.turso_db and self.turso_db.connected:
+            variants = self.generate_anusvara_variants(word_hk)
+            for variant in variants:
+                is_found, root, info = self.turso_db.check_participle_form(variant)
+                if is_found:
+                    analysis = {
+                        'form': word_hk,
+                        'root': root,
+                        'type': 'participle',
+                        'participle_type': info.get('participle_type'),
+                        'suffix': info.get('suffix'),
+                        'source': 'attested_form',
+                        'confidence': 1.0,
+                        'notes': [f"Participle form attested in database for root '{root}'"]
+                    }
+
+                    # Add declension info if available (for declined participles)
+                    if info.get('gender'):
+                        analysis['gender'] = info.get('gender')
+                        analysis['case'] = info.get('case')
+                        analysis['number'] = info.get('number')
+
+                    results.append(analysis)
+
+        # Ending-based analysis
+        suffix_matches = self.find_suffix_matches(word_hk, self.participle_suffixes)
+
+        for match in suffix_matches[:10]:
+            suffix = match['suffix']
+            base = match['base']
+            info = match['info']
+
+            # Check if root exists in verb_roots
+            potential_roots = []
+
+            # Try direct match
+            if base in self.verb_roots:
+                potential_roots.append(base)
+
+            # For consonant-only participles, skip if no consonant root found
+            if info.get('consonant_only') and not potential_roots:
+                # Check if base ends in consonant
+                if base and base[-1] not in {'a', 'ā', 'A', 'i', 'ī', 'I', 'u', 'ū', 'U', 'e', 'o', 'M', 'ṃ'}:
+                    potential_roots.append(base)
+
+            # If no direct match, try substrings
+            if not potential_roots:
+                for i in range(len(base), max(1, len(base)-2), -1):
+                    subroot = base[:i]
+                    if subroot in self.verb_roots:
+                        potential_roots.append(subroot)
+                        break
+
+            # If still no match, use base as guess
+            if not potential_roots:
+                potential_roots.append(base)
+
+            for root in potential_roots:
+                confidence = info.get('confidence', 0.7)
+
+                # Boost confidence if root is in verb_roots
+                if root in self.verb_roots:
+                    confidence += 0.15
+
+                analysis = {
+                    'form': word_hk,
+                    'root': root,
+                    'suffix': suffix,
+                    'type': 'participle',
+                    'participle_type': info.get('type'),
+                    'source': 'ending_based_guess',
+                    'confidence': min(confidence, 1.0),
+                    'notes': [f"Participle: {info.get('type')} with suffix '{suffix}'"]
+                }
+
+                # Add note if declined
+                if info.get('declined'):
+                    analysis['notes'].append('Declined form - analyze as noun for case/gender/number')
+                    analysis['declined'] = True
+
+                results.append(analysis)
+
+        return results
+
     def parse(self, text: str) -> Dict:
         """Main parsing function - unified analysis"""
         # Validate input
@@ -1206,12 +1347,13 @@ class PrakritUnifiedParser:
         original_script = self.detect_script(text)
         word_hk = self.transliterate_to_hk(self.normalize_input(text))
 
-        # Analyze as both noun and verb
+        # Analyze as noun, verb, and participle
         noun_analyses = self.analyze_as_noun(word_hk)
         verb_analyses = self.analyze_as_verb(word_hk)
+        participle_analyses = self.analyze_as_participle(word_hk)
 
         # Combine and sort by confidence
-        all_analyses = noun_analyses + verb_analyses
+        all_analyses = noun_analyses + verb_analyses + participle_analyses
         all_analyses.sort(key=lambda x: x.get('confidence', 0), reverse=True)
 
         # Apply learned adjustments from user feedback

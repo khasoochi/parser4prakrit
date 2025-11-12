@@ -289,6 +289,105 @@ class TursoDatabase:
             print(f"✗ Error checking noun form: {e}")
             return False, None, None
 
+    def load_participle_forms(self) -> Dict[str, Dict[str, Dict]]:
+        """
+        Load all participle forms from Turso database
+
+        Returns:
+            Dict mapping root -> form -> grammatical_info
+            Example: {'pucch': {'pucchittA': {'type': 'absolutive', 'suffix': 'ttA'}}}
+        """
+        if not self.connected:
+            if not self.connect():
+                return {}
+
+        try:
+            # Check if participle_forms table exists
+            query = """
+                SELECT
+                    vr.root,
+                    pf.form,
+                    pf.participle_type,
+                    pf.suffix,
+                    pf.gender,
+                    pf.case_name,
+                    pf.number
+                FROM participle_forms pf
+                JOIN verb_roots vr ON pf.root_id = vr.root_id
+            """
+
+            result = self.client.execute(query)
+
+            # Organize by root -> form -> info
+            participle_data = {}
+            for row in result.rows:
+                root = row[0]
+                form = row[1]
+
+                if root not in participle_data:
+                    participle_data[root] = {}
+
+                participle_data[root][form] = {
+                    'participle_type': row[2],
+                    'suffix': row[3],
+                    'gender': row[4],
+                    'case': row[5],
+                    'number': row[6]
+                }
+
+            print(f"✓ Loaded {len(participle_data)} verb roots with participle forms from Turso")
+            return participle_data
+
+        except Exception as e:
+            # Table might not exist yet
+            return {}
+
+    def check_participle_form(self, form: str) -> Tuple[bool, Optional[str], Optional[Dict]]:
+        """
+        Check if a participle form exists in the database
+
+        Args:
+            form: Participle form to check
+
+        Returns:
+            Tuple of (found, root, grammatical_info)
+        """
+        if not self.connected:
+            if not self.connect():
+                return False, None, None
+
+        try:
+            query = """
+                SELECT
+                    vr.root,
+                    pf.participle_type,
+                    pf.suffix,
+                    pf.gender,
+                    pf.case_name,
+                    pf.number
+                FROM participle_forms pf
+                JOIN verb_roots vr ON pf.root_id = vr.root_id
+                WHERE pf.form = ?
+                LIMIT 1
+            """
+
+            result = self.client.execute(query, [form])
+
+            if result.rows:
+                row = result.rows[0]
+                return True, row[0], {
+                    'participle_type': row[1],
+                    'suffix': row[2],
+                    'gender': row[3],
+                    'case': row[4],
+                    'number': row[5]
+                }
+
+            return False, None, None
+
+        except Exception as e:
+            return False, None, None
+
     def close(self):
         """Close database connection"""
         if self.client:
