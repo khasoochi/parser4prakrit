@@ -62,8 +62,6 @@ NOUN_ENDING_TYPES = {
     'I': 'I-ending (IkArAnta)',
     'u': 'u-ending (ukArAnta)',
     'U': 'U-ending (UkArAnta)',
-    'e': 'e-ending (ekArAnta)',
-    'o': 'o-ending (okArAnta)',
 }
 
 # Optional dependencies
@@ -571,15 +569,6 @@ class PrakritUnifiedParser:
                 'priority': 1,
                 'confidence': 0.7
             },
-            'o': {
-                'cases': ['nominative', 'vocative', 'ablative'],
-                'numbers': ['singular (nom/voc)', 'plural (abl)'],
-                'genders': ['masculine', 'feminine'],
-                'must_precede': [],
-                'blocks': [],
-                'priority': 1,
-                'confidence': 0.65
-            },
             'u': {
                 'cases': ['ablative'],
                 'numbers': ['singular', 'plural'],
@@ -588,15 +577,6 @@ class PrakritUnifiedParser:
                 'blocks': [],
                 'priority': 1,
                 'confidence': 0.60
-            },
-            'e': {
-                'cases': ['nominative', 'locative', 'vocative'],
-                'numbers': ['singular', 'plural'],
-                'genders': ['masculine', 'feminine'],
-                'must_precede': [],
-                'blocks': [],
-                'priority': 1,
-                'confidence': 0.6
             },
             'a': {
                 'cases': ['nominative', 'vocative'],
@@ -1000,12 +980,10 @@ class PrakritUnifiedParser:
         CRITICAL Prakrit gender rules:
         - a-ending: masculine/neuter ONLY (NO feminine)
         - A-ending (ā): feminine/masculine/neuter
-        - i-ending: masculine/neuter ONLY (NO feminine)
+        - i-ending: masculine/feminine/neuter (ALL genders allowed)
         - I-ending (ī): feminine (and sometimes masculine/neuter)
-        - u-ending: masculine/neuter ONLY (NO feminine)
+        - u-ending: masculine/feminine/neuter (ALL genders allowed)
         - U-ending (ū): feminine (and sometimes masculine/neuter)
-        - e-ending: masculine/feminine/neuter
-        - o-ending: masculine/feminine/neuter
 
         Args:
             stem: The noun stem
@@ -1022,10 +1000,6 @@ class PrakritUnifiedParser:
         # Define invalid combinations
         if last_char == 'a' and gender == 'feminine':
             return False  # NO a-ending feminine words!
-        if last_char == 'i' and gender == 'feminine':
-            return False  # NO i-ending feminine words!
-        if last_char == 'u' and gender == 'feminine':
-            return False  # NO u-ending feminine words!
 
         # All other combinations are potentially valid
         return True
