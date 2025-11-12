@@ -8,19 +8,24 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=Playfair+Display:wght@400;700&family=Lora:wght@400;500;600&display=swap">
   <style>
     :root {
-      --primary-color: #2c5f6f;
-      --secondary-color: #4a90a4;
-      --accent-color: #87ceeb;
-      --success-color: #4caf50;
-      --warning-color: #ff9800;
-      --danger-color: #f44336;
-      --text-dark: #2c3e50;
-      --text-light: #7f8c8d;
-      --bg-light: #f8f9fa;
-      --bg-white: #ffffff;
-      --border-color: #e0e0e0;
-      --shadow: 0 2px 10px rgba(0,0,0,0.1);
-      --shadow-hover: 0 4px 20px rgba(0,0,0,0.15);
+      /* Vintage Modern Color Palette - warm, earthy tones */
+      --primary-color: #8B4513;           /* Saddle brown */
+      --secondary-color: #A0522D;         /* Sienna */
+      --accent-color: #DAA520;            /* Goldenrod */
+      --success-color: #6B8E23;           /* Olive drab */
+      --warning-color: #D2691E;           /* Chocolate */
+      --danger-color: #A52A2A;            /* Brown */
+      --text-dark: #3E2723;               /* Dark brown */
+      --text-medium: #5D4037;             /* Medium brown */
+      --text-light: #8D6E63;              /* Light brown */
+      --bg-paper: #F5F1E8;                /* Paper beige */
+      --bg-light: #FAF7F0;                /* Light cream */
+      --bg-white: #FFFEF7;                /* Warm white */
+      --bg-card: #FFF9E6;                 /* Light yellow */
+      --border-color: #D7CCC8;            /* Warm gray */
+      --border-accent: #BCAAA4;           /* Darker warm gray */
+      --shadow: 0 3px 12px rgba(62, 39, 35, 0.08);
+      --shadow-hover: 0 6px 24px rgba(62, 39, 35, 0.12);
     }
 
     * {
@@ -31,18 +36,23 @@
 
     body {
       font-family: 'Lora', 'Noto Sans Devanagari', serif;
-      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      background: var(--bg-paper);
+      background-image:
+        linear-gradient(0deg, transparent 24%, rgba(210, 180, 140, .03) 25%, rgba(210, 180, 140, .03) 26%, transparent 27%, transparent 74%, rgba(210, 180, 140, .03) 75%, rgba(210, 180, 140, .03) 76%, transparent 77%, transparent),
+        linear-gradient(90deg, transparent 24%, rgba(210, 180, 140, .03) 25%, rgba(210, 180, 140, .03) 26%, transparent 27%, transparent 74%, rgba(210, 180, 140, .03) 75%, rgba(210, 180, 140, .03) 76%, transparent 77%, transparent);
+      background-size: 50px 50px;
       color: var(--text-dark);
-      line-height: 1.6;
+      line-height: 1.8;
       min-height: 100vh;
     }
 
     header {
       background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-      color: white;
-      padding: 2rem 0;
+      color: var(--bg-white);
+      padding: 2.5rem 0;
       text-align: center;
       box-shadow: var(--shadow);
+      border-bottom: 3px solid var(--accent-color);
     }
 
     header h1 {
@@ -100,16 +110,18 @@
     }
 
     .form-card {
-      background: var(--bg-white);
-      padding: 2rem;
-      border-radius: 12px;
+      background: var(--bg-card);
+      padding: 2.5rem;
+      border-radius: 8px;
       box-shadow: var(--shadow);
       margin-bottom: 2rem;
-      transition: box-shadow 0.3s;
+      transition: all 0.3s;
+      border: 2px solid var(--border-color);
     }
 
     .form-card:hover {
       box-shadow: var(--shadow-hover);
+      border-color: var(--border-accent);
     }
 
     .form-group {
@@ -247,33 +259,40 @@
     }
 
     .analysis-card {
-      background: var(--bg-white);
-      padding: 2rem;
-      border-radius: 12px;
+      background: var(--bg-card);
+      padding: 2.5rem;
+      border-radius: 8px;
       box-shadow: var(--shadow);
       margin-bottom: 1.5rem;
+      border: 2px solid var(--border-color);
     }
 
     .analysis-card h3 {
       color: var(--primary-color);
-      font-size: 1.5rem;
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      font-weight: 700;
       margin-bottom: 1.5rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 3px solid var(--accent-color);
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid var(--accent-color);
     }
 
     .analysis-item {
-      background: var(--bg-light);
-      padding: 1.5rem;
-      margin-bottom: 1rem;
-      border-radius: 8px;
-      border-left: 4px solid var(--secondary-color);
+      background: var(--bg-white);
+      padding: 1.75rem;
+      margin-bottom: 1.25rem;
+      border-radius: 6px;
+      border-left: 4px solid var(--accent-color);
+      border-right: 1px solid var(--border-color);
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
       transition: all 0.3s;
     }
 
     .analysis-item:hover {
       transform: translateX(5px);
       box-shadow: var(--shadow);
+      border-left-width: 6px;
     }
 
     .analysis-header {
