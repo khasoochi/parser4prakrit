@@ -62,8 +62,6 @@ NOUN_ENDING_TYPES = {
     'I': 'I-ending (IkArAnta)',
     'u': 'u-ending (ukArAnta)',
     'U': 'U-ending (UkArAnta)',
-    'e': 'e-ending (ekArAnta)',
-    'o': 'o-ending (okArAnta)',
 }
 
 # Optional dependencies
@@ -571,28 +569,19 @@ class PrakritUnifiedParser:
                 'priority': 1,
                 'confidence': 0.7
             },
-            'o': {
-                'cases': ['nominative', 'vocative', 'ablative'],
-                'numbers': ['singular (nom/voc)', 'plural (abl)'],
-                'genders': ['masculine', 'feminine'],
-                'must_precede': [],
-                'blocks': [],
-                'priority': 1,
-                'confidence': 0.65
-            },
-            'e': {
-                'cases': ['nominative', 'locative', 'vocative'],
+            'u': {
+                'cases': ['ablative'],
                 'numbers': ['singular', 'plural'],
-                'genders': ['masculine', 'feminine'],
+                'genders': ['masculine', 'feminine', 'neuter'],
                 'must_precede': [],
                 'blocks': [],
                 'priority': 1,
-                'confidence': 0.6
+                'confidence': 0.60
             },
             'a': {
-                'cases': ['nominative', 'vocative', 'instrumental'],
-                'numbers': ['singular', 'plural'],
-                'genders': ['feminine'],
+                'cases': ['nominative', 'vocative'],
+                'numbers': ['singular'],
+                'genders': ['neuter'],  # Only neuter a-ending in nominative
                 'must_precede': [],
                 'blocks': [],
                 'priority': 1,
@@ -984,60 +973,145 @@ class PrakritUnifiedParser:
 
         return True
 
+    def is_valid_gender_for_stem(self, stem: str, gender: str) -> bool:
+        """
+        Validate if a gender is valid for a given stem ending
+
+        CRITICAL Prakrit gender rules:
+        - a-ending: masculine/neuter ONLY (NO feminine)
+        - A-ending (ā): feminine/masculine/neuter
+        - i-ending: masculine/feminine/neuter (ALL genders allowed)
+        - I-ending (ī): feminine (and sometimes masculine/neuter)
+        - u-ending: masculine/feminine/neuter (ALL genders allowed)
+        - U-ending (ū): feminine (and sometimes masculine/neuter)
+
+        Args:
+            stem: The noun stem
+            gender: The proposed gender (masculine/feminine/neuter)
+
+        Returns:
+            True if gender is valid for this stem, False otherwise
+        """
+        if not stem:
+            return True  # Can't validate
+
+        last_char = stem[-1]
+
+        # Define invalid combinations
+        if last_char == 'a' and gender == 'feminine':
+            return False  # NO a-ending feminine words!
+
+        # All other combinations are potentially valid
+        return True
+
     def reconstruct_noun_stem(self, base: str, suffix: str, gender: str) -> str:
-        """Reconstruct noun stem from base and suffix"""
+        """
+        Reconstruct noun stem from base and suffix
+
+        Fifth case (ablative) rule:
+        - For all ablative suffixes EXCEPT 'tto': last vowel is ELONGATED (a→A, i→I, u→U)
+        - For 'tto' suffix: if last vowel is LONG, it is SHORTENED (A→a, I→i, U→u)
+        - For a-ending words with 'hinto'/'sunto' plural: a optionally changes to 'e'
+        """
         if not base:
             return ''
 
-        # For suffixes attached to long vowel or 'e' forms
-        if suffix in ['hinto', 'hiMto', 'sunto', 'suMto', 'hi', 'hiM', 'hi~', 'su', 'suM']:
-            if base.endswith('e'):
-                return base[:-1] + 'a'  # a-stem
-            # Handle ā/A (long a)
-            elif base.endswith(('ā', 'A')):
-                if gender == 'feminine':
-                    return base  # ā-stem feminine
-                return base[:-1] + 'a'  # masculine
-            # Handle ī/I (long i)
-            elif base.endswith(('ī', 'I')):
-                if gender == 'feminine':
-                    return base  # ī-stem feminine
-                return base[:-1] + 'i'  # masculine - shorten to i
-            # Handle ū/U (long u)
-            elif base.endswith(('ū', 'U')):
-                if gender == 'feminine':
-                    return base  # ū-stem feminine
-                return base[:-1] + 'u'  # masculine - shorten to u
+        # ABLATIVE (5th case) suffixes that ELONGATE the final vowel
+        # (All ablative except 'tto')
+        ablative_elongate = ['o', 'u', 'hi', 'hiM', 'hi~', 'hinto', 'hiMto', 'sunto', 'suMto']
 
-        # For suffixes attached directly to stem
-        elif suffix in ['ssa', 'mmi', 'No']:
+        if suffix in ablative_elongate:
+            # The base has elongated vowel, we need to shorten it to get stem
+            # BUT: for A-ending feminine stems, the base IS the stem (no elongation)
+            if base.endswith(('A', 'ā')):
+                # Two interpretations:
+                # 1. A is elongated 'a' → stem is a-ending (masculine/neuter)
+                # 2. A is the stem ending → stem is A-ending (feminine)
+                if gender == 'feminine':
+                    # A-ending feminine stem
+                    return base
+                else:
+                    # a-ending masculine/neuter (elongated to A)
+                    return base[:-1] + 'a'
+            elif base.endswith(('I', 'ī')):
+                # Two interpretations:
+                # 1. I is elongated 'i' → stem is i-ending (masculine/neuter)
+                # 2. I is the stem ending → stem is I-ending (feminine)
+                if gender == 'feminine':
+                    # I-ending feminine stem
+                    return base
+                else:
+                    # i-ending masculine/neuter (elongated to I)
+                    return base[:-1] + 'i'
+            elif base.endswith(('U', 'ū')):
+                # Two interpretations:
+                # 1. U is elongated 'u' → stem is u-ending (masculine/neuter)
+                # 2. U is the stem ending → stem is U-ending (feminine)
+                if gender == 'feminine':
+                    # U-ending feminine stem
+                    return base
+                else:
+                    # u-ending masculine/neuter (elongated to U)
+                    return base[:-1] + 'u'
+            elif base.endswith('e'):
+                # e could come from a→e (optional change before hinto/sunto)
+                return base[:-1] + 'a'
+            # If already short vowel, stem is just base + short vowel
+            elif base.endswith('a'):
+                return base + 'a'
+            elif base.endswith('i'):
+                return base + 'i'
+            elif base.endswith('u'):
+                return base + 'u'
+
+        # ABLATIVE 'tto' suffix: SHORTENS long vowels (opposite of others)
+        elif suffix == 'tto':
+            # Base has short vowel (because long was shortened), so stem has short vowel
             if base.endswith(('a', 'i', 'u')):
+                return base
+            # If base has long vowel, it means stem also has long vowel
+            elif base.endswith(('A', 'ā')):
+                return base
+            elif base.endswith(('I', 'ī')):
+                return base
+            elif base.endswith(('U', 'ū')):
+                return base
+            else:
+                # No vowel ending, add default 'a'
+                return base + 'a'
+
+        # Instrumental plural (hi, hiM, su, suM): expect elongated vowels
+        # (These overlap with ablative_elongate, so handled above)
+
+        # For suffixes attached directly to stem (no vowel change)
+        elif suffix in ['ssa', 'mmi', 'No']:
+            if base.endswith(('a', 'i', 'u', 'A', 'ā', 'I', 'ī', 'U', 'ū')):
                 return base
             return base + 'a'  # default
 
-        # For Na/NaM (context-dependent)
+        # Dative/Genitive plural (Na/NaM)
         elif suffix in ['Na', 'NaM']:
-            if base.endswith('e'):
-                return base[:-1] + 'a'  # instrumental singular
-            elif base.endswith(('ā', 'ī', 'ū', 'A', 'I', 'U')):
-                # Convert long vowels to short (both diacritic and HK forms)
-                vowel_map = {'ā': 'a', 'ī': 'i', 'ū': 'u', 'A': 'a', 'I': 'i', 'U': 'u'}
-                return base[:-1] + vowel_map[base[-1]]
+            # These expect elongated vowels too
+            if base.endswith(('A', 'ā')):
+                return base[:-1] + 'a'
+            elif base.endswith(('I', 'ī')):
+                return base[:-1] + 'i'
+            elif base.endswith(('U', 'ū')):
+                return base[:-1] + 'u'
+            elif base.endswith('e'):
+                return base[:-1] + 'a'
+            elif base.endswith(('a', 'i', 'u')):
+                return base
 
-        # For tto
-        elif suffix == 'tto':
-            if not base.endswith(('a', 'i', 'u', 'ā', 'ī', 'ū', 'A', 'I', 'U')):
-                return base + 'a'
+        # Nominative/Vocative singular 'e' - from a-stem
+        elif suffix == 'e':
+            return base + 'a'
+
+        # Accusative singular 'M'
+        elif suffix == 'M':
             return base
 
-        # Single character suffixes
-        elif suffix == 'o':
-            return base + 'a'  # nominative masculine
-        elif suffix == 'e':
-            return base + 'a'  # converted from a
-        elif suffix == 'M':
-            return base  # accusative
-
+        # Default: return base as-is
         return base
 
     def analyze_as_noun(self, word_hk: str) -> List[Dict]:
@@ -1086,6 +1160,11 @@ class PrakritUnifiedParser:
 
                 # Validate Prakrit phonology: no consonant-ending stems
                 if not self.is_valid_prakrit_stem(stem):
+                    continue
+
+                # Validate gender for this stem ending
+                # CRITICAL: No a-ending, i-ending, or u-ending feminine words!
+                if not self.is_valid_gender_for_stem(stem, gender):
                     continue
 
                 # Create analysis for each case possibility
