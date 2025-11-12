@@ -646,19 +646,21 @@
             <div class="analysis-details">
         `;
 
+        // Handle different word types with customized fields
         if (analysis.type === 'verb') {
+          // Verb declensions: verb root, tense/mood, voice, person, number
           html += `
             <div class="detail-item">
-              <div class="detail-label">Root</div>
+              <div class="detail-label">Verb Root</div>
               <div class="detail-value">${analysis.root || 'Unknown'}</div>
             </div>
             <div class="detail-item">
-              <div class="detail-label">Ending</div>
-              <div class="detail-value">${analysis.ending || 'N/A'}</div>
+              <div class="detail-label">Tense/Mood</div>
+              <div class="detail-value">${analysis.tense || 'Unknown'}</div>
             </div>
             <div class="detail-item">
-              <div class="detail-label">Tense</div>
-              <div class="detail-value">${analysis.tense || 'Unknown'}</div>
+              <div class="detail-label">Voice</div>
+              <div class="detail-value">${analysis.voice || 'active'}</div>
             </div>
             <div class="detail-item">
               <div class="detail-label">Person</div>
@@ -668,13 +670,94 @@
               <div class="detail-label">Number</div>
               <div class="detail-value">${analysis.number || 'Unknown'}</div>
             </div>
+            <div class="detail-item">
+              <div class="detail-label">Source</div>
+              <div class="detail-value">${analysis.source || 'Unknown'}</div>
+            </div>
           `;
+        } else if (analysis.type === 'participle') {
+          if (analysis.source === 'declined_participle') {
+            // Declined participle: root, type (Sanskrit), suffix, case, number, source, confidence
+            html += `
+              <div class="detail-item">
+                <div class="detail-label">Verb Root</div>
+                <div class="detail-value">${analysis.root || 'Unknown'}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Participle Type</div>
+                <div class="detail-value">${analysis.sanskrit_term || analysis.participle_type || 'Unknown'}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Participle Stem</div>
+                <div class="detail-value">${analysis.stem || 'Unknown'}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Participle Suffix</div>
+                <div class="detail-value">${analysis.participle_suffix || 'N/A'}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Noun Ending</div>
+                <div class="detail-value">-${analysis.noun_ending || 'N/A'}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Case</div>
+                <div class="detail-value">${analysis.sanskrit_case || analysis.case || (analysis.cases ? analysis.cases.join('/') : 'Unknown')}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Number</div>
+                <div class="detail-value">${analysis.sanskrit_number || analysis.number || (analysis.numbers ? analysis.numbers.join('/') : 'Unknown')}</div>
+              </div>
+              ${analysis.gender ? `
+              <div class="detail-item">
+                <div class="detail-label">Gender</div>
+                <div class="detail-value">${analysis.sanskrit_gender || analysis.gender}</div>
+              </div>
+              ` : ''}
+              <div class="detail-item">
+                <div class="detail-label">Source</div>
+                <div class="detail-value">${analysis.source || 'Unknown'}</div>
+              </div>
+            `;
+          } else {
+            // Indeclinable participle: root, type (Sanskrit), suffix, source, confidence
+            html += `
+              <div class="detail-item">
+                <div class="detail-label">Verb Root</div>
+                <div class="detail-value">${analysis.root || 'Unknown'}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Participle Type</div>
+                <div class="detail-value">${analysis.participle_type || 'Unknown'}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Suffix</div>
+                <div class="detail-value">${analysis.suffix || 'N/A'}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-label">Source</div>
+                <div class="detail-value">${analysis.source || 'Unknown'}</div>
+              </div>
+              ${analysis.declined ? `
+              <div class="detail-item">
+                <div class="detail-label">Note</div>
+                <div class="detail-value">Declinable form</div>
+              </div>
+              ` : ''}
+            `;
+          }
         } else if (analysis.type === 'noun') {
+          // Nominal declensions: stem, ending type, gender, suffix, case, number, source
           html += `
             <div class="detail-item">
               <div class="detail-label">Stem</div>
               <div class="detail-value">${analysis.stem || 'Unknown'}</div>
             </div>
+            ${analysis.stem_ending_type ? `
+            <div class="detail-item">
+              <div class="detail-label">Ending Type</div>
+              <div class="detail-value">${analysis.stem_ending_type}</div>
+            </div>
+            ` : ''}
             <div class="detail-item">
               <div class="detail-label">Suffix</div>
               <div class="detail-value">${analysis.suffix || 'N/A'}</div>
@@ -691,14 +774,26 @@
               <div class="detail-label">Number</div>
               <div class="detail-value">${analysis.number || 'Unknown'}</div>
             </div>
+            <div class="detail-item">
+              <div class="detail-label">Source</div>
+              <div class="detail-value">${analysis.source || 'Unknown'}</div>
+            </div>
+          `;
+        } else {
+          // Fallback for unknown types
+          html += `
+            <div class="detail-item">
+              <div class="detail-label">Type</div>
+              <div class="detail-value">${analysis.type || 'Unknown'}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Source</div>
+              <div class="detail-value">${analysis.source || 'Unknown'}</div>
+            </div>
           `;
         }
 
         html += `
-              <div class="detail-item">
-                <div class="detail-label">Source</div>
-                <div class="detail-value">${analysis.source || 'Unknown'}</div>
-              </div>
             </div>
         `;
 

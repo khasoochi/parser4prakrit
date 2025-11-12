@@ -1114,6 +1114,12 @@ class PrakritUnifiedParser:
                             'notes': [f"Ending-based analysis: suffix '{suffix}' suggests {case} {number}"]
                         }
 
+                        # Add stem ending type (e.g., a-ending, A-ending)
+                        if stem:
+                            stem_ending = stem[-1]
+                            if stem_ending in NOUN_ENDING_TYPES:
+                                analysis['stem_ending_type'] = NOUN_ENDING_TYPES[stem_ending]
+
                         # Add note if stem matches attested
                         if is_attested and stem == attested_stem:
                             analysis['notes'].append(f"Stem '{stem}' matches attested form")
