@@ -9,6 +9,63 @@ import json
 import os
 from typing import Dict, List, Tuple, Optional
 
+# Sanskrit Terminology Mappings
+SANSKRIT_TERMS = {
+    # Participle types (kRdanta)
+    'absolutive': 'pUrvakAlika-kRdanta',  # Also called sambhandhaka-bhUta
+    'present_participle': 'vartamAna-kRdanta',
+    'past_passive_participle': 'bhUta-kRdanta',
+    'purposive': 'kriyArthaka-kRdanta',
+
+    # Case names (vibhakti)
+    'nominative': 'prathamA-vibhakti',
+    'accusative': 'dvitIyA-vibhakti',
+    'instrumental': 'tRtIyA-vibhakti',
+    'dative': 'caturthI-vibhakti',
+    'ablative': 'paJcamI-vibhakti',
+    'genitive': 'SaSThI-vibhakti',
+    'locative': 'saptamI-vibhakti',
+    'vocative': 'saMbodhana',
+
+    # Tense/mood
+    'present': 'vartamAna-kAla',
+    'past': 'bhUta-kAla',
+    'future': 'bhaviSya-kAla',
+    'imperative': 'AjJA-artha',
+    'optative': 'vidhiliG',
+
+    # Voice
+    'active': 'kartari-prayoga',
+    'passive': 'karmaNi-prayoga',
+
+    # Number
+    'singular': 'eka-vacana',
+    'plural': 'bahu-vacana',
+    'dual': 'dvi-vacana',
+
+    # Gender
+    'masculine': 'puMliGga',
+    'feminine': 'strI-liGga',
+    'neuter': 'napuMsaka-liGga',
+
+    # Person
+    'first': 'uttama-puruSa',
+    'second': 'madhyama-puruSa',
+    'third': 'prathama-puruSa',
+}
+
+# Ending type descriptions for nouns
+NOUN_ENDING_TYPES = {
+    'a': 'a-ending (akArAnta)',
+    'A': 'A-ending (AkArAnta)',
+    'i': 'i-ending (ikArAnta)',
+    'I': 'I-ending (IkArAnta)',
+    'u': 'u-ending (ukArAnta)',
+    'U': 'U-ending (UkArAnta)',
+    'e': 'e-ending (ekArAnta)',
+    'o': 'o-ending (okArAnta)',
+}
+
 # Optional dependencies
 try:
     from flask import Flask, render_template, request, jsonify
@@ -1332,6 +1389,130 @@ class PrakritUnifiedParser:
 
         return results
 
+    def is_participle_stem(self, stem: str) -> Tuple[bool, Optional[Dict]]:
+        """
+        Check if a stem is a participle stem and return participle info
+
+        Returns:
+            (is_participle, participle_info) where participle_info contains:
+            - root: verbal root
+            - suffix: participle suffix
+            - type: participle type
+            - confidence: confidence score
+        """
+        # Check against known participle suffixes
+        for suffix, info in self.participle_suffixes.items():
+            if stem.endswith(suffix):
+                base = stem[:-len(suffix)]
+
+                # Check if root exists
+                potential_roots = []
+
+                # Direct match
+                if base in self.verb_roots:
+                    potential_roots.append(base)
+
+                # Substring matches
+                if not potential_roots:
+                    for i in range(len(base), max(1, len(base)-2), -1):
+                        subroot = base[:i]
+                        if subroot in self.verb_roots:
+                            potential_roots.append(subroot)
+                            break
+
+                # If we found a root, this is likely a participle
+                if potential_roots:
+                    root = potential_roots[0]
+                    confidence = info.get('confidence', 0.7)
+                    if root in self.verb_roots:
+                        confidence += 0.15
+
+                    return True, {
+                        'root': root,
+                        'suffix': suffix,
+                        'type': info.get('type'),
+                        'declined': info.get('declined', False),
+                        'confidence': min(confidence, 1.0),
+                        'sanskrit_term': SANSKRIT_TERMS.get(info.get('type'), info.get('type'))
+                    }
+
+        return False, None
+
+    def analyze_as_declined_participle(self, word_hk: str) -> List[Dict]:
+        """
+        Analyze word as a declined participle (participle stem + noun ending)
+
+        This handles forms like: pucchamANAo = pucchamANA (participle stem) + o (noun ending)
+        """
+        results = []
+
+        # Try stripping noun suffixes to see if we get a participle stem
+        for noun_suffix, suffix_info in self.noun_suffixes.items():
+            if word_hk.endswith(noun_suffix):
+                # Get potential stem
+                stem = word_hk[:-len(noun_suffix)]
+
+                # Check if this stem is a participle
+                is_part, part_info = self.is_participle_stem(stem)
+
+                if is_part:
+                    # This is a declined participle!
+                    analysis = {
+                        'form': word_hk,
+                        'stem': stem,
+                        'root': part_info['root'],
+                        'type': 'participle',
+                        'participle_type': part_info['type'],
+                        'sanskrit_term': part_info['sanskrit_term'],
+                        'participle_suffix': part_info['suffix'],
+                        'noun_ending': noun_suffix,
+                        'source': 'declined_participle',
+                        'confidence': min(part_info['confidence'] + 0.1, 1.0),
+                        'notes': [
+                            f"Declined participle: {part_info['sanskrit_term']}",
+                            f"Root: '{part_info['root']}' + participle suffix '{part_info['suffix']}'",
+                            f"Declined with noun ending '-{noun_suffix}'"
+                        ]
+                    }
+
+                    # Add case/number/gender info from noun suffix
+                    cases = suffix_info.get('cases', [])
+                    numbers = suffix_info.get('numbers', [])
+                    genders = suffix_info.get('genders', [])
+
+                    if cases:
+                        # Convert to Sanskrit terms if single case
+                        if len(cases) == 1:
+                            analysis['case'] = cases[0]
+                            analysis['sanskrit_case'] = SANSKRIT_TERMS.get(cases[0], cases[0])
+                        else:
+                            analysis['cases'] = cases  # Multiple possibilities
+                            analysis['sanskrit_cases'] = [SANSKRIT_TERMS.get(c, c) for c in cases]
+
+                    if numbers:
+                        if len(numbers) == 1:
+                            analysis['number'] = numbers[0]
+                            analysis['sanskrit_number'] = SANSKRIT_TERMS.get(numbers[0], numbers[0])
+                        else:
+                            analysis['numbers'] = numbers
+
+                    if genders:
+                        if len(genders) == 1:
+                            analysis['gender'] = genders[0]
+                            analysis['sanskrit_gender'] = SANSKRIT_TERMS.get(genders[0], genders[0])
+                        else:
+                            analysis['genders'] = genders
+
+                    # Determine stem ending type
+                    if stem:
+                        stem_ending = stem[-1]
+                        if stem_ending in NOUN_ENDING_TYPES:
+                            analysis['stem_ending_type'] = NOUN_ENDING_TYPES[stem_ending]
+
+                    results.append(analysis)
+
+        return results
+
     def parse(self, text: str) -> Dict:
         """Main parsing function - unified analysis"""
         # Validate input
@@ -1351,9 +1532,11 @@ class PrakritUnifiedParser:
         noun_analyses = self.analyze_as_noun(word_hk)
         verb_analyses = self.analyze_as_verb(word_hk)
         participle_analyses = self.analyze_as_participle(word_hk)
+        declined_participle_analyses = self.analyze_as_declined_participle(word_hk)
 
         # Combine and sort by confidence
-        all_analyses = noun_analyses + verb_analyses + participle_analyses
+        # Prioritize declined participles as they are more specific
+        all_analyses = declined_participle_analyses + participle_analyses + noun_analyses + verb_analyses
         all_analyses.sort(key=lambda x: x.get('confidence', 0), reverse=True)
 
         # Apply learned adjustments from user feedback
