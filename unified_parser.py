@@ -12,7 +12,7 @@ from typing import Dict, List, Tuple, Optional
 # Sanskrit Terminology Mappings
 SANSKRIT_TERMS = {
     # Participle types (kRdanta)
-    'absolutive': 'pUrvakAlika-kRdanta',  # Also called sambhandhaka-bhUta
+    'absolutive': 'sambandhaka-kRdanta',  # Also called pUrvakAlika-kRdanta
     'present_participle': 'vartamAna-kRdanta',
     'past_passive_participle': 'bhUta-kRdanta',
     'purposive': 'kriyArthaka-kRdanta',
@@ -586,6 +586,37 @@ class PrakritUnifiedParser:
                 'blocks': [],
                 'priority': 1,
                 'confidence': 0.5
+            },
+            # Feminine-specific endings (long vowels as part of stem, NOT stripped as suffix)
+            'A': {
+                'cases': ['nominative', 'vocative', 'accusative'],
+                'numbers': ['singular', 'plural'],
+                'genders': ['feminine'],
+                'must_precede': [],
+                'blocks': [],
+                'priority': 0,  # Lowest priority - only match if nothing else matches
+                'confidence': 0.85,
+                'zero_suffix': True  # This is a stem-final vowel, not a suffix
+            },
+            'I': {
+                'cases': ['nominative', 'vocative'],
+                'numbers': ['singular'],
+                'genders': ['feminine'],
+                'must_precede': [],
+                'blocks': [],
+                'priority': 0,
+                'confidence': 0.85,
+                'zero_suffix': True  # This is a stem-final vowel, not a suffix
+            },
+            'U': {
+                'cases': ['nominative', 'vocative'],
+                'numbers': ['singular'],
+                'genders': ['feminine'],
+                'must_precede': [],
+                'blocks': [],
+                'priority': 0,
+                'confidence': 0.85,
+                'zero_suffix': True  # This is a stem-final vowel, not a suffix
             }
         }
 
@@ -977,13 +1008,15 @@ class PrakritUnifiedParser:
         """
         Validate if a gender is valid for a given stem ending
 
-        CRITICAL Prakrit gender rules:
-        - a-ending: masculine/neuter ONLY (NO feminine)
-        - A-ending (ā): feminine/masculine/neuter
-        - i-ending: masculine/feminine/neuter (ALL genders allowed)
-        - I-ending (ī): feminine (and sometimes masculine/neuter)
-        - u-ending: masculine/feminine/neuter (ALL genders allowed)
-        - U-ending (ū): feminine (and sometimes masculine/neuter)
+        CRITICAL Prakrit gender rules (based on prakrit-noun-js):
+        - Masculine/Neuter: a, i, u endings ONLY
+        - Feminine: A, i, I, u, U endings (and a-ending converts to A)
+
+        Therefore:
+        - A-ending: FEMININE ONLY
+        - I-ending: FEMININE ONLY
+        - U-ending: FEMININE ONLY
+        - a, i, u endings: ALL genders allowed
 
         Args:
             stem: The noun stem
@@ -997,11 +1030,11 @@ class PrakritUnifiedParser:
 
         last_char = stem[-1]
 
-        # Define invalid combinations
-        if last_char == 'a' and gender == 'feminine':
-            return False  # NO a-ending feminine words!
+        # A, I, U endings are FEMININE ONLY
+        if last_char in ['A', 'I', 'U'] and gender in ['masculine', 'neuter']:
+            return False
 
-        # All other combinations are potentially valid
+        # All other combinations are valid
         return True
 
     def reconstruct_noun_stem(self, base: str, suffix: str, gender: str) -> str:
@@ -1134,11 +1167,21 @@ class PrakritUnifiedParser:
 
             # Add grammatical info if available from form_info
             if form_info and isinstance(form_info, dict):
+                case = form_info.get('case', 'unknown')
+                number = form_info.get('number', 'unknown')
+                gender = form_info.get('gender', 'unknown')
                 analysis.update({
-                    'case': form_info.get('case', 'unknown'),
-                    'number': form_info.get('number', 'unknown'),
-                    'gender': form_info.get('gender', 'unknown')
+                    'case': case,
+                    'number': number,
+                    'gender': gender
                 })
+                # Add Sanskrit terms
+                if case != 'unknown':
+                    analysis['sanskrit_case'] = SANSKRIT_TERMS.get(case, case)
+                if number != 'unknown':
+                    analysis['sanskrit_number'] = SANSKRIT_TERMS.get(number, number)
+                if gender != 'unknown':
+                    analysis['sanskrit_gender'] = SANSKRIT_TERMS.get(gender, gender)
 
             results.append(analysis)
             # Don't return immediately - also try ending-based analysis for additional insights
@@ -1153,7 +1196,11 @@ class PrakritUnifiedParser:
 
             # Try each gender possibility
             for gender in info.get('genders', []):
-                stem = self.reconstruct_noun_stem(base, suffix, gender)
+                # For zero-suffix cases (A, I, U feminine endings), the base IS the stem
+                if info.get('zero_suffix', False):
+                    stem = base + suffix  # Reconstruct the full word as the stem
+                else:
+                    stem = self.reconstruct_noun_stem(base, suffix, gender)
 
                 if not stem or len(stem) < 2:
                     continue
@@ -1183,15 +1230,20 @@ class PrakritUnifiedParser:
                         analysis = {
                             'form': word_hk,
                             'stem': stem,
-                            'suffix': suffix,
+                            'suffix': suffix if not info.get('zero_suffix') else '',
                             'case': case,
                             'number': number,
                             'gender': gender,
                             'type': 'noun',
                             'source': 'ending_based_guess' if not is_attested else 'attested_stem_match',
                             'confidence': min(confidence, 1.0),
-                            'notes': [f"Ending-based analysis: suffix '{suffix}' suggests {case} {number}"]
+                            'notes': [f"Ending-based analysis: stem-final '{suffix}' suggests {case} {number}" if info.get('zero_suffix') else f"Ending-based analysis: suffix '{suffix}' suggests {case} {number}"]
                         }
+
+                        # Add Sanskrit terms
+                        analysis['sanskrit_case'] = SANSKRIT_TERMS.get(case, case)
+                        analysis['sanskrit_number'] = SANSKRIT_TERMS.get(number, number)
+                        analysis['sanskrit_gender'] = SANSKRIT_TERMS.get(gender, gender)
 
                         # Add stem ending type (e.g., a-ending, A-ending)
                         if stem:
@@ -1272,14 +1324,30 @@ class PrakritUnifiedParser:
 
             # Add grammatical info if available from form_info
             if form_info and isinstance(form_info, dict):
+                tense = form_info.get('tense', 'unknown')
+                voice = form_info.get('voice', 'active')  # active/passive
+                mood = form_info.get('mood', 'indicative')
+                person = form_info.get('person', 'unknown')
+                number = form_info.get('number', 'unknown')
                 analysis.update({
-                    'tense': form_info.get('tense', 'unknown'),
-                    'voice': form_info.get('voice', 'active'),  # active/passive
-                    'mood': form_info.get('mood', 'indicative'),
+                    'tense': tense,
+                    'voice': voice,
+                    'mood': mood,
                     'dialect': form_info.get('dialect', 'standard'),
-                    'person': form_info.get('person', 'unknown'),
-                    'number': form_info.get('number', 'unknown')
+                    'person': person,
+                    'number': number
                 })
+                # Add Sanskrit terms
+                if tense != 'unknown':
+                    analysis['sanskrit_tense'] = SANSKRIT_TERMS.get(tense, tense)
+                if voice and voice != 'unknown':
+                    analysis['sanskrit_voice'] = SANSKRIT_TERMS.get(voice, voice)
+                if mood and mood != 'unknown':
+                    analysis['sanskrit_mood'] = SANSKRIT_TERMS.get(mood, mood)
+                if person != 'unknown':
+                    analysis['sanskrit_person'] = SANSKRIT_TERMS.get(person, person)
+                if number != 'unknown':
+                    analysis['sanskrit_number'] = SANSKRIT_TERMS.get(number, number)
 
             results.append(analysis)
             # Don't return immediately - also try ending-based analysis for additional insights
@@ -1361,21 +1429,39 @@ class PrakritUnifiedParser:
                 if is_attested and candidate['root'] == attested_root:
                     source = 'attested_root_match'
 
+                tense = info.get('tense')
+                voice = 'active'  # Default for ending-based analysis
+                mood = 'indicative'  # Default for ending-based analysis
+                person = info.get('person')
+                number = info.get('number')
+
                 analysis = {
                     'form': word_hk,
                     'root': candidate['root'],
                     'ending': ending,
-                    'tense': info.get('tense'),
-                    'voice': 'active',  # Default for ending-based analysis
-                    'mood': 'indicative',  # Default for ending-based analysis
+                    'tense': tense,
+                    'voice': voice,
+                    'mood': mood,
                     'dialect': 'standard',  # Default for ending-based analysis
-                    'person': info.get('person'),
-                    'number': info.get('number'),
+                    'person': person,
+                    'number': number,
                     'type': 'verb',
                     'source': source,
                     'confidence': min(max(confidence, 0.1), 1.0),
                     'notes': [f"Ending-based analysis: {note}"]
                 }
+
+                # Add Sanskrit terms
+                if tense:
+                    analysis['sanskrit_tense'] = SANSKRIT_TERMS.get(tense, tense)
+                if voice:
+                    analysis['sanskrit_voice'] = SANSKRIT_TERMS.get(voice, voice)
+                if mood:
+                    analysis['sanskrit_mood'] = SANSKRIT_TERMS.get(mood, mood)
+                if person:
+                    analysis['sanskrit_person'] = SANSKRIT_TERMS.get(person, person)
+                if number:
+                    analysis['sanskrit_number'] = SANSKRIT_TERMS.get(number, number)
 
                 # Add note if root matches attested
                 if is_attested and candidate['root'] == attested_root:
@@ -1395,22 +1481,37 @@ class PrakritUnifiedParser:
             for variant in variants:
                 is_found, root, info = self.turso_db.check_participle_form(variant)
                 if is_found:
+                    participle_type = info.get('participle_type')
                     analysis = {
                         'form': word_hk,
                         'root': root,
                         'type': 'participle',
-                        'participle_type': info.get('participle_type'),
+                        'participle_type': participle_type,
                         'suffix': info.get('suffix'),
                         'source': 'attested_form',
                         'confidence': 1.0,
                         'notes': [f"Participle form attested in database for root '{root}'"]
                     }
 
+                    # Add Sanskrit term for participle type
+                    if participle_type:
+                        analysis['sanskrit_term'] = SANSKRIT_TERMS.get(participle_type, participle_type)
+
                     # Add declension info if available (for declined participles)
                     if info.get('gender'):
-                        analysis['gender'] = info.get('gender')
-                        analysis['case'] = info.get('case')
-                        analysis['number'] = info.get('number')
+                        gender = info.get('gender')
+                        case = info.get('case')
+                        number = info.get('number')
+                        analysis['gender'] = gender
+                        analysis['case'] = case
+                        analysis['number'] = number
+                        # Add Sanskrit terms for declined participles
+                        if gender:
+                            analysis['sanskrit_gender'] = SANSKRIT_TERMS.get(gender, gender)
+                        if case:
+                            analysis['sanskrit_case'] = SANSKRIT_TERMS.get(case, case)
+                        if number:
+                            analysis['sanskrit_number'] = SANSKRIT_TERMS.get(number, number)
 
                     results.append(analysis)
 
@@ -1454,16 +1555,21 @@ class PrakritUnifiedParser:
                 if root in self.verb_roots:
                     confidence += 0.15
 
+                participle_type = info.get('type')
                 analysis = {
                     'form': word_hk,
                     'root': root,
                     'suffix': suffix,
                     'type': 'participle',
-                    'participle_type': info.get('type'),
+                    'participle_type': participle_type,
                     'source': 'ending_based_guess',
                     'confidence': min(confidence, 1.0),
-                    'notes': [f"Participle: {info.get('type')} with suffix '{suffix}'"]
+                    'notes': [f"Participle: {participle_type} with suffix '{suffix}'"]
                 }
+
+                # Add Sanskrit term for participle type
+                if participle_type:
+                    analysis['sanskrit_term'] = SANSKRIT_TERMS.get(participle_type, participle_type)
 
                 # Add note if declined
                 if info.get('declined'):
