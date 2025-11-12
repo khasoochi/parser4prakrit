@@ -7,8 +7,15 @@ from typing import Dict, List, Optional, Tuple
 from libsql_client import create_client_sync
 
 # Turso database configuration
-TURSO_DATABASE_URL = "libsql://prakrit-khasoochi.aws-ap-south-1.turso.io"
-TURSO_AUTH_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NjI4NzIyNTUsImlkIjoiNjg1ZTllODgtYTZlZS00OWQ3LTg1MWQtNDVlNjczODYxZDlkIiwicmlkIjoiOGJiYWQzY2UtYzA2Mi00ZDYxLWE4OWYtYzM2MDJlMzk5MDI0In0.XO1aX7KG1AvzJtzF2uv6mBfxy20FQOBWlPAzwdQHrUhOpV-AwvW2v0pqhA2K3RFtyb7MaclTHdekWQ7LWhNtBg"
+# Use environment variables for security, fall back to defaults for local dev
+TURSO_DATABASE_URL = os.getenv(
+    'TURSO_DATABASE_URL',
+    "libsql://prakrit-khasoochi.aws-ap-south-1.turso.io"
+)
+TURSO_AUTH_TOKEN = os.getenv(
+    'TURSO_AUTH_TOKEN',
+    "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NjI4NzIyNTUsImlkIjoiNjg1ZTllODgtYTZlZS00OWQ3LTg1MWQtNDVlNjczODYxZDlkIiwicmlkIjoiOGJiYWQzY2UtYzA2Mi00ZDYxLWE4OWYtYzM2MDJlMzk5MDI0In0.XO1aX7KG1AvzJtzF2uv6mBfxy20FQOBWlPAzwdQHrUhOpV-AwvW2v0pqhA2K3RFtyb7MaclTHdekWQ7LWhNtBg"
+)
 
 class TursoDatabase:
     """Turso database connection wrapper"""
@@ -20,6 +27,10 @@ class TursoDatabase:
 
     def connect(self):
         """Establish connection to Turso database"""
+        print(f"🔌 Attempting to connect to Turso database...")
+        print(f"   URL: {TURSO_DATABASE_URL}")
+        print(f"   Auth token: {'*' * 20}...{TURSO_AUTH_TOKEN[-10:] if TURSO_AUTH_TOKEN else 'NOT SET'}")
+
         try:
             self.client = create_client_sync(
                 url=TURSO_DATABASE_URL,
@@ -30,15 +41,27 @@ class TursoDatabase:
             try:
                 test_result = self.client.execute("SELECT 1")
                 self.connected = True
-                print("✓ Connected to Turso database")
+                print("✓ Connected to Turso database successfully!")
+                print("✓ Test query executed - database is operational")
                 return True
             except Exception as test_error:
                 print(f"✗ Turso database connection test failed: {test_error}")
+                print("  → This usually means:")
+                print("     1. Network/DNS issue (check firewall/connectivity)")
+                print("     2. Invalid auth token")
+                print("     3. Database is paused or deleted")
                 self.connected = False
                 return False
 
+        except ImportError as ie:
+            print(f"✗ libsql_client library not installed: {ie}")
+            print("  → Install with: pip install libsql-client")
+            self.connected = False
+            return False
         except Exception as e:
             print(f"✗ Failed to create Turso client: {e}")
+            print(f"  → Error type: {type(e).__name__}")
+            print("  → Check TURSO_DATABASE_URL and TURSO_AUTH_TOKEN environment variables")
             self.connected = False
             return False
 
