@@ -586,6 +586,37 @@ class PrakritUnifiedParser:
                 'blocks': [],
                 'priority': 1,
                 'confidence': 0.5
+            },
+            # Feminine-specific endings (long vowels as part of stem, NOT stripped as suffix)
+            'A': {
+                'cases': ['nominative', 'vocative', 'accusative'],
+                'numbers': ['singular', 'plural'],
+                'genders': ['feminine'],
+                'must_precede': [],
+                'blocks': [],
+                'priority': 0,  # Lowest priority - only match if nothing else matches
+                'confidence': 0.85,
+                'zero_suffix': True  # This is a stem-final vowel, not a suffix
+            },
+            'I': {
+                'cases': ['nominative', 'vocative'],
+                'numbers': ['singular'],
+                'genders': ['feminine'],
+                'must_precede': [],
+                'blocks': [],
+                'priority': 0,
+                'confidence': 0.85,
+                'zero_suffix': True  # This is a stem-final vowel, not a suffix
+            },
+            'U': {
+                'cases': ['nominative', 'vocative'],
+                'numbers': ['singular'],
+                'genders': ['feminine'],
+                'must_precede': [],
+                'blocks': [],
+                'priority': 0,
+                'confidence': 0.85,
+                'zero_suffix': True  # This is a stem-final vowel, not a suffix
             }
         }
 
@@ -977,13 +1008,15 @@ class PrakritUnifiedParser:
         """
         Validate if a gender is valid for a given stem ending
 
-        CRITICAL Prakrit gender rules:
-        - a-ending: masculine/neuter ONLY (NO feminine)
-        - A-ending (ā): feminine/masculine/neuter
-        - i-ending: masculine/feminine/neuter (ALL genders allowed)
-        - I-ending (ī): feminine (and sometimes masculine/neuter)
-        - u-ending: masculine/feminine/neuter (ALL genders allowed)
-        - U-ending (ū): feminine (and sometimes masculine/neuter)
+        CRITICAL Prakrit gender rules (based on prakrit-noun-js):
+        - Masculine/Neuter: a, i, u endings ONLY
+        - Feminine: A, i, I, u, U endings (and a-ending converts to A)
+
+        Therefore:
+        - A-ending: FEMININE ONLY
+        - I-ending: FEMININE ONLY
+        - U-ending: FEMININE ONLY
+        - a, i, u endings: ALL genders allowed
 
         Args:
             stem: The noun stem
@@ -997,11 +1030,11 @@ class PrakritUnifiedParser:
 
         last_char = stem[-1]
 
-        # Define invalid combinations
-        if last_char == 'a' and gender == 'feminine':
-            return False  # NO a-ending feminine words!
+        # A, I, U endings are FEMININE ONLY
+        if last_char in ['A', 'I', 'U'] and gender in ['masculine', 'neuter']:
+            return False
 
-        # All other combinations are potentially valid
+        # All other combinations are valid
         return True
 
     def reconstruct_noun_stem(self, base: str, suffix: str, gender: str) -> str:
@@ -1163,7 +1196,11 @@ class PrakritUnifiedParser:
 
             # Try each gender possibility
             for gender in info.get('genders', []):
-                stem = self.reconstruct_noun_stem(base, suffix, gender)
+                # For zero-suffix cases (A, I, U feminine endings), the base IS the stem
+                if info.get('zero_suffix', False):
+                    stem = base + suffix  # Reconstruct the full word as the stem
+                else:
+                    stem = self.reconstruct_noun_stem(base, suffix, gender)
 
                 if not stem or len(stem) < 2:
                     continue
@@ -1193,14 +1230,14 @@ class PrakritUnifiedParser:
                         analysis = {
                             'form': word_hk,
                             'stem': stem,
-                            'suffix': suffix,
+                            'suffix': suffix if not info.get('zero_suffix') else '',
                             'case': case,
                             'number': number,
                             'gender': gender,
                             'type': 'noun',
                             'source': 'ending_based_guess' if not is_attested else 'attested_stem_match',
                             'confidence': min(confidence, 1.0),
-                            'notes': [f"Ending-based analysis: suffix '{suffix}' suggests {case} {number}"]
+                            'notes': [f"Ending-based analysis: stem-final '{suffix}' suggests {case} {number}" if info.get('zero_suffix') else f"Ending-based analysis: suffix '{suffix}' suggests {case} {number}"]
                         }
 
                         # Add Sanskrit terms
