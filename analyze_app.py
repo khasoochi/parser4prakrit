@@ -8,6 +8,15 @@ from datetime import datetime
 from collections import defaultdict
 from aksharamukha import transliterate
 
+# Import Turso database
+try:
+    from turso_db import TursoDatabase
+    HAS_TURSO = True
+    print("✓ Turso database module loaded")
+except ImportError as e:
+    HAS_TURSO = False
+    print(f"✗ Turso database not available: {e}")
+
 app = Flask(__name__)
 
 # Learning system for continuous improvement
@@ -76,6 +85,25 @@ class LearningSystem:
 class EnhancedPrakritAnalyzer:
     def __init__(self):
         self.learning_system = LearningSystem()
+        self.turso_db = None
+        self.data_source = "none"
+
+        # Initialize Turso database connection
+        if HAS_TURSO:
+            try:
+                self.turso_db = TursoDatabase()
+                if self.turso_db.connect():
+                    self.data_source = "turso"
+                    print("✓ Connected to Turso database for data fetching")
+                else:
+                    print("✗ Failed to connect to Turso database, will use local JSON fallback")
+                    self.data_source = "local_json"
+            except Exception as e:
+                print(f"✗ Turso database initialization failed: {e}")
+                self.data_source = "local_json"
+        else:
+            print("⚠ Turso database module not available, using local JSON files")
+            self.data_source = "local_json"
     
     def detect_script(self, text):
         """Detect if the input is in Devanagari or Harvard-Kyoto"""
@@ -377,8 +405,31 @@ class EnhancedPrakritAnalyzer:
         """Enhanced verb analysis with hiatus 'y' handling and stem lookup"""
         from verb_analyzer import analyze_verb_form as base_analyze_verb
         import json
-        
-        # First try normal analysis
+
+        # First check Turso database for attested forms
+        if self.turso_db and self.turso_db.connected:
+            is_found, root, info = self.turso_db.check_verb_form(verb_form)
+            if is_found:
+                print(f"✓ Found verb form '{verb_form}' in Turso database")
+                result = {
+                    'form': verb_form,
+                    'hk_form': self.transliterate_to_hk(verb_form),
+                    'potential_root': root,
+                    'confidence': 1.0,
+                    'source': 'attested in Turso database',
+                    'analysis': {
+                        'tense': info.get('tense', 'unknown'),
+                        'voice': info.get('voice', 'active'),
+                        'mood': info.get('mood', 'indicative'),
+                        'person': info.get('person', 'unknown'),
+                        'number': info.get('number', 'unknown'),
+                        'dialect': info.get('dialect', 'standard')
+                    },
+                    'notes': [f"Form attested in Turso database for root '{root}'"]
+                }
+                return [result]
+
+        # Otherwise, try normal analysis
         results = base_analyze_verb(verb_form)
         
         # If no results or low confidence, try with hiatus 'y' variations
@@ -437,33 +488,55 @@ class EnhancedPrakritAnalyzer:
     def analyze_noun_form(self, word):
         """Analyze a Prakrit noun form using signature-based pattern recognition with improved suffix handling"""
         import os, json, re
-        json_path = os.path.join(os.path.dirname(__file__), 'all_noun_forms.json')
-        try:
-            with open(json_path, encoding='utf-8') as f:
-                all_noun_forms = json.load(f)
-        except Exception:
-            all_noun_forms = {}
-        
+
         hk_word = self.transliterate_to_hk(word)
         possible_matches = []
-        
-        # 1. Attested matches: find all stems where this form is present
-        for stem, forms in all_noun_forms.items():
-            if hk_word in forms:
-                found = forms[hk_word]
+
+        # 1. Check Turso database first for attested forms
+        if self.turso_db and self.turso_db.connected:
+            is_found, stem, info = self.turso_db.check_noun_form(hk_word)
+            if is_found:
+                print(f"✓ Found noun form '{hk_word}' in Turso database")
                 match = {
                     'stem': stem,
                     'form': hk_word,
-                    'gender': found.get('gender', 'unknown'),
-                    'case': found.get('case', 'unknown'),
-                    'number': found.get('number', 'unknown'),
-                    'source': 'attested in all_noun_forms.json',
+                    'gender': info.get('gender', 'unknown'),
+                    'case': info.get('case', 'unknown'),
+                    'number': info.get('number', 'unknown'),
+                    'source': 'attested in Turso database',
                     'confidence': 1.0,
-                    'notes': [f"Form '{hk_word}' attested for stem '{stem}'."],
+                    'notes': [f"Form '{hk_word}' attested in Turso database for stem '{stem}'."],
                     'stem_lookup': True,
-                    'stem_info': found
+                    'stem_info': info
                 }
                 possible_matches.append(match)
+
+        # 2. Fallback to local JSON files if Turso not available or form not found
+        if not possible_matches:
+            json_path = os.path.join(os.path.dirname(__file__), 'all_noun_forms.json')
+            try:
+                with open(json_path, encoding='utf-8') as f:
+                    all_noun_forms = json.load(f)
+            except Exception:
+                all_noun_forms = {}
+
+            # Find all stems where this form is present
+            for stem, forms in all_noun_forms.items():
+                if hk_word in forms:
+                    found = forms[hk_word]
+                    match = {
+                        'stem': stem,
+                        'form': hk_word,
+                        'gender': found.get('gender', 'unknown'),
+                        'case': found.get('case', 'unknown'),
+                        'number': found.get('number', 'unknown'),
+                        'source': 'attested in all_noun_forms.json',
+                        'confidence': 1.0,
+                        'notes': [f"Form '{hk_word}' attested for stem '{stem}'."],
+                        'stem_lookup': True,
+                        'stem_info': found
+                    }
+                    possible_matches.append(match)
         
         # Define suffix priority for longest match first
         SUFFIX_PRIORITY = [
